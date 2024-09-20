@@ -63,12 +63,20 @@ pjm_baltimore.head()
 pjm_baltimore.describe()
 
 # +
-datetime_index = pd.DataFrame(pd.date_range(start=pjm_baltimore["UTC_Timestamp__Interval_Ending_"].min(),
-                               end=pjm_baltimore["UTC_Timestamp__Interval_Ending_"].max(),
-                               freq="1h"))
+pjm_baltimore_train = pjm_baltimore[pjm_baltimore["UTC_Timestamp__Interval_Ending_"].dt.year < 2024]
+pjm_baltimore_test = pjm_baltimore[pjm_baltimore["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
+
+print(pjm_baltimore_train.shape, pjm_baltimore_test.shape)
+print(pjm_baltimore_train.tail(1))
+print(pjm_baltimore_test.head(1))
+
+# +
+datetime_index = pd.DataFrame(pd.date_range(start = pjm_baltimore_train["UTC_Timestamp__Interval_Ending_"].min(),
+                               end = pjm_baltimore_train["UTC_Timestamp__Interval_Ending_"].max(),
+                               freq = "1h"))
 datetime_index.columns = ["UTC_Timestamp"]
 
-temp = datetime_index.merge(pjm_baltimore, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
+temp = datetime_index.merge(pjm_baltimore_train, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
 temp["UTC_Timestamp__Interval_Ending_"] = pd.to_datetime(temp["UTC_Timestamp"].dt.date)
 
 temp.index = temp["UTC_Timestamp"]
@@ -85,29 +93,30 @@ print(temp.info())
 temp.head()
 
 # +
-# pjm_baltimore_daily = pjm_baltimore.drop(["UTC_Timestamp__Interval_Ending_"], axis = 1)
-# pjm_baltimore_daily = pjm_baltimore_daily.resample("D").sum()
+pjm_baltimore_train = temp
+pjm_baltimore_train_daily = pjm_baltimore_train.drop(["UTC_Timestamp__Interval_Ending_"], axis = 1)
+pjm_baltimore_train_daily = pjm_baltimore_train_daily.resample("D").sum()
 
-# print(pjm_baltimore_daily.shape)
-# pjm_baltimore_daily.head()
+pjm_baltimore_train_daily.head()
 # -
 
 # ### Data Visualization
 
 # +
-sns.boxplot(pjm_baltimore_daily).set(title = "Baltimore Daily")
+sns.boxplot(pjm_baltimore_train_daily).set(title = "Baltimore Daily")
 plt.show()
 
-sns.boxplot(pjm_baltimore).set(title = "Baltimore Hourly")
+sns.boxplot(pjm_baltimore_train).set(title = "Baltimore Hourly")
 plt.show()
 
 # +
-sns.histplot(pjm_baltimore_daily).set(title = "Baltimore Daily")
+sns.histplot(pjm_baltimore_train_daily).set(title = "Baltimore Daily")
 plt.show()
 
-sns.histplot(pjm_baltimore).set(title = "Baltimore Daily")
+sns.histplot(pjm_baltimore_train).set(title = "Baltimore Daily")
 plt.show()
 # -
 
-sns.lineplot(data = pjm_baltimore_daily, x = "UTC_Timestamp__Interval_Ending_", y = "Baltimore_Gas_and_Electric_Company_Actual_Load__MW_")
+sns.lineplot(data = pjm_baltimore_train_daily, x = pjm_baltimore_train_daily.index, y = "Baltimore_Gas_and_Electric_Company_Actual_Load__MW_")
+plt.xticks(rotation = 45)
 plt.show()
