@@ -69,9 +69,22 @@ datetime_index = pd.DataFrame(pd.date_range(start=pjm_baltimore["UTC_Timestamp__
 datetime_index.columns = ["UTC_Timestamp"]
 
 temp = datetime_index.merge(pjm_baltimore, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
+temp["UTC_Timestamp__Interval_Ending_"] = pd.to_datetime(temp["UTC_Timestamp"].dt.date)
+
+temp.index = temp["UTC_Timestamp"]
+temp.drop(["UTC_Timestamp"], axis = 1, inplace= True)
+
+# impute from mean of that day if other observations for that day are available
+temp["Baltimore_Gas_and_Electric_Company_Actual_Load__MW_"] = temp.groupby("UTC_Timestamp__Interval_Ending_").transform(lambda x: x.fillna(x.mean()))
+
+# impute from mean of that month if there are 0 observations for a given day
+temp["UTC_Timestamp__Interval_Ending_"] = temp["UTC_Timestamp__Interval_Ending_"].dt.to_period("M")
+temp["Baltimore_Gas_and_Electric_Company_Actual_Load__MW_"] = temp.groupby("UTC_Timestamp__Interval_Ending_").transform(lambda x: x.fillna(x.mean()))
+
 print(temp.info())
 temp.head()
 
+# +
 # pjm_baltimore_daily = pjm_baltimore.drop(["UTC_Timestamp__Interval_Ending_"], axis = 1)
 # pjm_baltimore_daily = pjm_baltimore_daily.resample("D").sum()
 
