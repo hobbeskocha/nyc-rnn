@@ -86,11 +86,16 @@ temp_interpolate = temp.interpolate(method = "time")
 
 print(temp_interpolate.info())
 temp_interpolate.head()
+# -
+
+temp.to_csv("../data/nyc_ny_train_hourly.csv")
+temp_interpolate.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
 
 # +
 nyc_ny_train = temp_interpolate
 nyc_ny_train_daily = nyc_ny_train.resample("D").sum()
 
+print(nyc_ny_train_daily.shape)
 nyc_ny_train_daily.head()
 # -
 
