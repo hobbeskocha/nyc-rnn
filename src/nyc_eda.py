@@ -97,7 +97,22 @@ nyc_ny_train_daily = nyc_ny_train.resample("D").sum()
 
 print(nyc_ny_train_daily.shape)
 nyc_ny_train_daily.head()
+
+# +
+datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_test["UTC_Timestamp__Interval_Ending_"].min(),
+                               end = nyc_ny_test["UTC_Timestamp__Interval_Ending_"].max(),
+                               freq = "1h"))
+datetime_index.columns = ["UTC_Timestamp"]
+temp = datetime_index.merge(nyc_ny_test, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
+
+temp.index = temp["UTC_Timestamp"]
+temp.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
+
+temp.info()
+temp.head()
 # -
+
+temp.to_csv("../data/nyc_ny_test_hourly.csv")
 
 # ### Data Visualization
 
