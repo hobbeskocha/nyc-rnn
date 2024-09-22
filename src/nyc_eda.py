@@ -52,7 +52,7 @@ nyc_complete.info()
 
 nyc_complete.isna().sum().sort_values()
 
-nyc_complete.columns = nyc_complete.columns.str.replace(r'[ \(\)\-]', '_', regex=True)
+nyc_complete.columns = nyc_complete.columns.str.replace(r'[ \(\)\-]', '_', regex = True)
 nyc_complete.columns
 
 nyc_complete["UTC_Timestamp__Interval_Ending_"] = pd.to_datetime(nyc_complete["UTC_Timestamp__Interval_Ending_"], format = "%Y-%m-%d %H:%M:%S")
@@ -63,13 +63,36 @@ nyc_ny.head()
 nyc_ny.columns = ["UTC_Timestamp__Interval_Ending_", "New_York_City_Actual_Load__MW_"]
 nyc_ny.describe()
 
+# ### Define Train-Test Split
+
 # +
+nyc_ny.sort_values(by = "UTC_Timestamp__Interval_Ending_", inplace = True)
+
 nyc_ny_train = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year < 2024]
 nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
 
 print(nyc_ny_train.shape, nyc_ny_test.shape)
 print(nyc_ny_train.tail(1))
 print(nyc_ny_test.head(1))
+
+
+# -
+
+# ### Include Full Date Range and Impute Missing Values for Train Set
+
+def impute_missing_by_seasonal_average(df):
+    for i in range(len(df)):
+        if pd.isna(df.loc[df.index[i], "New_York_City_Actual_Load__MW_"]):
+            # Find all previous similar periods (same month, day, and hour)
+            similar_periods = df[(df['month'] == df['month'].iloc[i]) &
+                                 (df['day'] == df['day'].iloc[i]) &
+                                 (df['hour'] == df['hour'].iloc[i]) &
+                                 (df.index < df.index[i])]
+            
+            if not similar_periods.empty:
+                df.loc[df.index[i], "New_York_City_Actual_Load__MW_"] = similar_periods["New_York_City_Actual_Load__MW_"].mean()
+    return df
+
 
 # +
 datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_train["UTC_Timestamp__Interval_Ending_"].min(),
@@ -82,21 +105,29 @@ temp = datetime_index.merge(nyc_ny_train, how = "left", left_on = "UTC_Timestamp
 temp.index = temp["UTC_Timestamp"]
 temp.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
 
-temp_interpolate = temp.interpolate(method = "time")
+temp["month"] = temp.index.month
+temp["day"] = temp.index.day
+temp["hour"] = temp.index.hour
+
+temp_interpolate = impute_missing_by_seasonal_average(temp)
+temp_interpolate.interpolate(method = "time", inplace = True)
+
+temp_interpolate.drop(columns=["month", "day", "hour"], inplace=True)
 
 print(temp_interpolate.info())
 temp_interpolate.head()
-# -
-
-temp.to_csv("../data/nyc_ny_train_hourly.csv")
-temp_interpolate.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
 
 # +
 nyc_ny_train = temp_interpolate
 nyc_ny_train_daily = nyc_ny_train.resample("D").sum()
 
+nyc_ny_train_daily.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
+# -
+
 print(nyc_ny_train_daily.shape)
 nyc_ny_train_daily.head()
+
+# ### Include Full Date Range for Test Set
 
 # +
 datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_test["UTC_Timestamp__Interval_Ending_"].min(),
@@ -112,9 +143,12 @@ temp.info()
 temp.head()
 # -
 
-temp.to_csv("../data/nyc_ny_test_hourly.csv")
+nyc_ny_test = temp
+nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
 # ### Data Visualization
+
+
 
 # +
 sns.boxplot(nyc_ny_train_daily).set(title = "NYC Daily")
