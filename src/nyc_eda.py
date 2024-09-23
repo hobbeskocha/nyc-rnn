@@ -16,7 +16,6 @@
 
 # ## Libraries
 
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -121,7 +120,7 @@ temp_interpolate.head()
 nyc_ny_train = temp_interpolate
 nyc_ny_train_daily = nyc_ny_train.resample("D").sum()
 
-nyc_ny_train_daily.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
+nyc_ny_train.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
 # -
 
 print(nyc_ny_train_daily.shape)
@@ -148,13 +147,25 @@ nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
 # ### Data Visualization
 
-
+nyc_viz = nyc_ny_train.copy()
+nyc_viz["year"] = nyc_viz.index.year
+nyc_viz["quarter"] = nyc_viz.index.quarter
+nyc_viz["month"] = nyc_viz.index.month
 
 # +
-sns.boxplot(nyc_ny_train_daily).set(title = "NYC Daily")
+sns.boxplot(nyc_ny_train).set(title = "NYC Hourly Overall")
 plt.show()
 
-sns.boxplot(nyc_ny_train).set(title = "NYC Hourly")
+sns.boxplot(nyc_ny_train_daily).set(title = "NYC Daily Overall")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "month", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Month")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Quarter")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "year", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Year")
 plt.show()
 
 # +
