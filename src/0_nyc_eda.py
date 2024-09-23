@@ -65,7 +65,7 @@ nyc_ny.describe()
 # ### Define Train-Test Split
 
 # +
-nyc_ny.sort_values(by = "UTC_Timestamp__Interval_Ending_", inplace = True)
+nyc_ny = nyc_ny.sort_values(by = "UTC_Timestamp__Interval_Ending_")
 
 nyc_ny_train = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year < 2024]
 nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
