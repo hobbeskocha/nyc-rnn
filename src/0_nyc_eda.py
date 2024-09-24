@@ -143,6 +143,7 @@ temp.head()
 # -
 
 nyc_ny_test = temp
+nyc_ny_test_daily = nyc_ny_test.resample("D").sum()
 nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
 # ### Data Visualization
@@ -177,6 +178,11 @@ plt.show()
 # -
 
 plt.figure(figsize = (20, 10))
-sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_Actual_Load__MW_")
+sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Training Set")
+plt.xticks(rotation = 45)
+plt.show()
+
+plt.figure(figsize = (20, 10))
+sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Test Set")
 plt.xticks(rotation = 45)
 plt.show()
