@@ -17,6 +17,7 @@
 # ## Libraries
 
 # +
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -25,6 +26,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torcheval.metrics import MeanSquaredError
 from sklearn.preprocessing import MinMaxScaler
 # -
 
@@ -38,8 +40,10 @@ nyc_train.columns = ["Actual_Load_MW"]
 nyc_test.columns = ["Actual_Load_MW"]
 # -
 
+nyc_train.info()
 nyc_train.head()
 
+nyc_test.info()
 nyc_test.head()
 
 
@@ -52,8 +56,6 @@ class ElectricLoadDataset(Dataset):
     def __init__(self, df, seq_len = 24):
         self.seq_len = seq_len
         self.data = df["Actual_Load_MW"].values.reshape(-1, 1)
-        self.normalizer = MinMaxScaler(feature_range=(0, 1))
-        self.data = self.normalizer.fit_transform(self.data)
 
     def __len__(self):
         return len(self.data) - self.seq_len
@@ -64,7 +66,7 @@ class ElectricLoadDataset(Dataset):
         return torch.tensor(x, dtype = torch.float32), torch.tensor(y, dtype = torch.float32)
     
 class LSTMModel(nn.Module):
-    def __init__(self, input, hidden, n_layers):
+    def __init__(self, input, hidden, n_layers, dropout_prob = 0.2):
         super(LSTMModel, self).__init__()
         self.hidden_size = hidden
         self.num_layers = n_layers
@@ -72,8 +74,10 @@ class LSTMModel(nn.Module):
             input_size = input,
             hidden_size = hidden,
             num_layers = n_layers,
-            batch_first = True
+            batch_first = True,
+            dropout = dropout_prob
         )
+        self.dropout = nn.Dropout(dropout_prob)
         self.fc = nn.Linear(hidden, 1)
 
     def forward(self, x):
@@ -81,7 +85,8 @@ class LSTMModel(nn.Module):
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
 
         out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
+        out = self.dropout(out[:, -1, :])
+        out = self.fc(out)
         return out
 
 
@@ -91,21 +96,27 @@ class LSTMModel(nn.Module):
 
 # +
 sequence_length = 24
-batch_size = 2
+batch_size = 12
 input_size = 1
 
-hidden_size = 16
+hidden_size = 32
 num_layers = 2
+dropout_probability = 0.3
 epochs = 5
 
 # +
-train_elec_dataset = ElectricLoadDataset(nyc_train, sequence_length)
+normalizer = MinMaxScaler(feature_range=(0, 1))
+nyc_train_normalized = nyc_train.copy()
+nyc_train_normalized["Actual_Load_MW"] = normalizer.fit_transform(nyc_train_normalized)
+
+train_elec_dataset = ElectricLoadDataset(nyc_train_normalized, sequence_length)
 train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuffle = False)
 
-lstm = LSTMModel(input_size, hidden_size, num_layers)
+lstm = LSTMModel(input_size, hidden_size, num_layers, dropout_probability)
 criterion = nn.MSELoss()
-optimizer = optim.Adam(lstm.parameters(), lr = 0.001)
+optimizer = optim.Adam(lstm.parameters(), lr = 0.0001)
 
+lstm.train()
 for epoch in range(epochs):
     for x, y in train_dataloader:
         x = x.view(x.size(0), sequence_length, input_size)
@@ -116,3 +127,56 @@ for epoch in range(epochs):
         optimizer.step()
 
     print(f"Epoch {epoch + 1} with loss: {loss.item()}")
+# -
+
+# ### Model Inference
+
+# +
+nyc_test_normalized = nyc_test.copy()
+nyc_test_normalized["Actual_Load_MW"] = normalizer.transform(nyc_test_normalized)
+
+test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
+test_dataloader = DataLoader(test_elec_dataset, batch_size = batch_size, shuffle  = False)
+predictions, actuals = list(), list()
+mse = MeanSquaredError()
+
+lstm.eval()
+with torch.no_grad():
+    for seq, label in test_dataloader:
+        seq = seq.view(seq.size(0), sequence_length, input_size)
+        output = lstm(seq)
+        predictions.append(output.numpy())
+        actuals.append(label.numpy())
+        mse.update(output, label)
+
+# test_mse = mse.compute()
+# test_mse
+
+predictions = np.concatenate(predictions, axis = 0)
+actuals = np.concatenate(actuals, axis = 0)
+predictions = normalizer.inverse_transform(predictions)
+actuals = normalizer.inverse_transform(actuals)
+
+# +
+actuals = pd.Series(actuals.squeeze())
+predictions = pd.Series(predictions.squeeze())
+
+data = {"Predicted_Load": predictions,
+        "Actual_Load": actuals}
+
+model_predictions = pd.concat(data, axis = 1)
+model_predictions.index = nyc_test[24:].index
+model_predictions
+# -
+
+nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp")
+nyc_predictions
+
+# +
+nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
+nyc_predictions_daily = nyc_predictions.resample("D").sum()
+
+sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
+sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual")
+plt.xticks(rotation = 45)
+plt.show()
