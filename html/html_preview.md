@@ -1,0 +1,2 @@
+https://htmlpreview.github.io/?https://github.com/hobbeskocha/nyc-rnn/blob/modeling/html/0_nyc_eda.html
+https://htmlpreview.github.io/?https://github.com/hobbeskocha/nyc-rnn/blob/modeling/html/1_nyc_analysis.html
