@@ -26,7 +26,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from torcheval.metrics import MeanSquaredError
 from sklearn.preprocessing import MinMaxScaler
 # -
 
@@ -46,8 +45,10 @@ nyc_train.head()
 nyc_test.info()
 nyc_test.head()
 
-
 # ## Data Processing
+
+torch.manual_seed(13)
+
 
 # ### Class Definitions
 
@@ -114,7 +115,7 @@ train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuff
 
 lstm = LSTMModel(input_size, hidden_size, num_layers, dropout_probability)
 criterion = nn.MSELoss()
-optimizer = optim.Adam(lstm.parameters(), lr = 0.0001)
+optimizer = optim.Adam(lstm.parameters(), lr = 0.0005)
 
 lstm.train()
 for epoch in range(epochs):
@@ -134,23 +135,30 @@ for epoch in range(epochs):
 # +
 nyc_test_normalized = nyc_test.copy()
 nyc_test_normalized["Actual_Load_MW"] = normalizer.transform(nyc_test_normalized)
+nyc_test_normalized = nyc_test_normalized.ffill(axis = 0)
 
 test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
 test_dataloader = DataLoader(test_elec_dataset, batch_size = batch_size, shuffle  = False)
 predictions, actuals = list(), list()
-mse = MeanSquaredError()
+mse = nn.MSELoss()
+total_mse = 0
+n_samples = 0
 
 lstm.eval()
 with torch.no_grad():
     for seq, label in test_dataloader:
         seq = seq.view(seq.size(0), sequence_length, input_size)
         output = lstm(seq)
+
         predictions.append(output.numpy())
         actuals.append(label.numpy())
-        mse.update(output, label)
+        
+        loss = mse(output, label)
+        total_mse += loss.item() * seq.size(0)
+        n_samples += seq.size(0)
 
-# test_mse = mse.compute()
-# test_mse
+avg_mse = total_mse / n_samples
+print("Test MSE: ", avg_mse)
 
 predictions = np.concatenate(predictions, axis = 0)
 actuals = np.concatenate(actuals, axis = 0)
@@ -169,6 +177,8 @@ model_predictions.index = nyc_test[24:].index
 model_predictions
 # -
 
+model_predictions.isna().sum()
+
 nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp")
 nyc_predictions
 
@@ -177,6 +187,6 @@ nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
 nyc_predictions_daily = nyc_predictions.resample("D").sum()
 
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual")
+sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
 plt.show()
