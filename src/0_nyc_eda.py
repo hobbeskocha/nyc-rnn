@@ -73,9 +73,12 @@ nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
 print(nyc_ny_train.shape, nyc_ny_test.shape)
 print(nyc_ny_train.tail(1))
 print(nyc_ny_test.head(1))
-
-
 # -
+
+nyc_ny_train.describe()
+
+nyc_ny_test.describe()
+
 
 # ### Include Full Date Range and Impute Missing Values for Train Set
 

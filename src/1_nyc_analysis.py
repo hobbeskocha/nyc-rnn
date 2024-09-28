@@ -27,6 +27,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, root_mean_squared_error
 # -
 
 # ## Import Data
@@ -45,10 +46,8 @@ nyc_train.head()
 nyc_test.info()
 nyc_test.head()
 
+
 # ## Data Processing
-
-torch.manual_seed(13)
-
 
 # ### Class Definitions
 
@@ -67,7 +66,7 @@ class ElectricLoadDataset(Dataset):
         return torch.tensor(x, dtype = torch.float32), torch.tensor(y, dtype = torch.float32)
     
 class LSTMModel(nn.Module):
-    def __init__(self, input, hidden, n_layers, dropout_prob = 0.2):
+    def __init__(self, input, hidden, n_layers, dropout_prob = 0.1):
         super(LSTMModel, self).__init__()
         self.hidden_size = hidden
         self.num_layers = n_layers
@@ -95,17 +94,30 @@ class LSTMModel(nn.Module):
 
 # ### Model Training
 
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        # Apply Xavier initialization to Linear layers
+        nn.init.xavier_uniform_(m.weight)
+    elif isinstance(m, nn.LSTM):
+        # Apply Xavier initialization to LSTM weight matrices
+        for name, param in m.named_parameters():
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(param.data)
+            elif 'weight_hh' in name:
+                nn.init.orthogonal_(param.data)
+            elif 'bias' in name:
+                param.data.fill_(0)
+
+
 # +
 sequence_length = 24
-batch_size = 12
+batch_size = 32
 input_size = 1
-
-hidden_size = 32
+hidden_size = 50
 num_layers = 2
-dropout_probability = 0.3
-epochs = 5
+dropout_probability = 0.1
+epochs = 20
 
-# +
 normalizer = MinMaxScaler(feature_range=(0, 1))
 nyc_train_normalized = nyc_train.copy()
 nyc_train_normalized["Actual_Load_MW"] = normalizer.fit_transform(nyc_train_normalized)
@@ -114,8 +126,11 @@ train_elec_dataset = ElectricLoadDataset(nyc_train_normalized, sequence_length)
 train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuffle = False)
 
 lstm = LSTMModel(input_size, hidden_size, num_layers, dropout_probability)
+lstm.apply(init_weights)
 criterion = nn.MSELoss()
-optimizer = optim.Adam(lstm.parameters(), lr = 0.0005)
+optimizer = optim.Adam(lstm.parameters(), lr = 0.0001)
+losses = list()
+# -
 
 lstm.train()
 for epoch in range(epochs):
@@ -125,10 +140,17 @@ for epoch in range(epochs):
         output = lstm(x)
         loss = criterion(output, y.view(-1, 1))
         loss.backward()
+        nn.utils.clip_grad_norm_(lstm.parameters(), max_norm = 1.0)
         optimizer.step()
 
     print(f"Epoch {epoch + 1} with loss: {loss.item()}")
-# -
+    losses.append(loss.item())
+
+loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": losses})
+sns.lineplot(loss_df, x = "epoch", y = "loss")
+plt.xlabel("Epochs")
+plt.ylabel("MSE Loss")
+plt.show()
 
 # ### Model Inference
 
@@ -178,6 +200,10 @@ model_predictions
 # -
 
 model_predictions.isna().sum()
+
+model_mse = mean_squared_error(model_predictions["Actual_Load"], model_predictions["Predicted_Load"])
+model_rmse = root_mean_squared_error(model_predictions["Actual_Load"], model_predictions["Predicted_Load"])
+print(model_mse, model_rmse)
 
 nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp")
 nyc_predictions
