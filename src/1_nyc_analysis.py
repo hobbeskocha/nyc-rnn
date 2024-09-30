@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import random
 
 import torch
 import torch.nn as nn
@@ -29,6 +30,10 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, root_mean_squared_error
 # -
+
+torch.manual_seed(13)
+random.seed(13)
+np.random.seed(13)
 
 # ## Import Data
 
@@ -216,3 +221,29 @@ sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", l
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
 plt.show()
+# -
+
+nyc_predictions.drop(["Actual_Load_MW"], axis = 1, inplace = True)
+nyc_predictions["month"] = nyc_predictions.index.month
+nyc_predictions["hour"] = nyc_predictions.index.hour
+
+# +
+sns.boxplot(nyc_predictions, x = "month", y = "Predicted_Load").set(title = "NYC Predicted Load by Month")
+plt.show()
+
+sns.boxplot(nyc_predictions, x = "month", y = "Actual_Load").set(title = "NYC Actual Load by Month")
+plt.show()
+
+# +
+sns.boxplot(nyc_predictions, x = "hour", y = "Predicted_Load").set(title = "NYC Predicted Load by Hour")
+plt.show()
+
+sns.boxplot(nyc_predictions, x = "hour", y = "Actual_Load").set(title = "NYC Actual Load by Hour")
+plt.show()
+
+# +
+avg_peak_month_load = nyc_predictions.query("month == 7")[["Predicted_Load", "Actual_Load"]].mean()
+print(avg_peak_month_load)
+
+avg_peak_hourly_load = nyc_predictions.query("hour == 22")[["Predicted_Load", "Actual_Load"]].mean()
+print(avg_peak_hourly_load)

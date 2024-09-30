@@ -155,12 +155,10 @@ nyc_viz = nyc_ny_train.copy()
 nyc_viz["year"] = nyc_viz.index.year
 nyc_viz["quarter"] = nyc_viz.index.quarter
 nyc_viz["month"] = nyc_viz.index.month
+nyc_viz["hour"] = nyc_viz.index.hour
 
 # +
-sns.boxplot(nyc_ny_train).set(title = "NYC Hourly Overall")
-plt.show()
-
-sns.boxplot(nyc_ny_train_daily).set(title = "NYC Daily Overall")
+sns.boxplot(nyc_viz, x = "hour", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Hour")
 plt.show()
 
 sns.boxplot(nyc_viz, x = "month", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Month")
