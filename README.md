@@ -35,7 +35,7 @@ I then plotted a line chart of electricity demand over time, allowing me to iden
 **Data Normalization**: 
 The training and test sets were normalized by scaling the electricity demand values between 0 and 1. This normalization was crucial to help that the RNN model converge more effectively during training by standardizing the input range.
 
-## Model Selection
+**Model Selection**:
 I choose LSTM model for future electricity demand forecasting due to its ability to capture long-term dependencies and sequential behavior in time series data.
 The architecture consisted of two LSTM layers with 50 units (neurons) each. While increasing the number of layers and units can capture complex temporal dependencies, it also increases the risk of overfitting. To address this, I applied regularization techniques, including Dense and Dropout layers. To capture the nonlinearity and learn the complex pattern of the data, I used ReLU activation function. By outputting 0 to negative values, ReLU prevents vanishing gradient problem. 
 
@@ -52,5 +52,5 @@ Since the task involves time series data, Mean Squared Error loss function was u
 The model achieved RMSE of 142 MW on the test set (with actual interquartile demand ranging from 4900 to 6600 MW). The predicted highest demand of 7225 MW occurred in July, and the peak hourly demand of 6384 at 6 p.m. EST. These predictions from LSTM model suggest that NYC utilities should ensure that the grid is reinforced to handle higher demands during summer evenings. Furthermore, allocating additional resources during peak-demand periods could prevent blackouts or system overloads. Utilities may also incentivize consumers to reduce usage during peak hours, especially in the evenings.
 
 ## Next Steps:
-The next phase of this project involves integrating weather data to further improve accuracy. I also plan to check the robustness of the results with GRU model.
+The next phase of this project involves integrating weather data to further improve accuracy. I also plan to check the robustness of the results with GRU model and more traditional forecasting models like ARIMA.
 
