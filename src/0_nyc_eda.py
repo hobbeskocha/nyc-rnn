@@ -73,9 +73,12 @@ nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
 print(nyc_ny_train.shape, nyc_ny_test.shape)
 print(nyc_ny_train.tail(1))
 print(nyc_ny_test.head(1))
-
-
 # -
+
+nyc_ny_train.describe()
+
+nyc_ny_test.describe()
+
 
 # ### Include Full Date Range and Impute Missing Values for Train Set
 
@@ -152,12 +155,10 @@ nyc_viz = nyc_ny_train.copy()
 nyc_viz["year"] = nyc_viz.index.year
 nyc_viz["quarter"] = nyc_viz.index.quarter
 nyc_viz["month"] = nyc_viz.index.month
+nyc_viz["hour"] = nyc_viz.index.hour
 
 # +
-sns.boxplot(nyc_ny_train).set(title = "NYC Hourly Overall")
-plt.show()
-
-sns.boxplot(nyc_ny_train_daily).set(title = "NYC Daily Overall")
+sns.boxplot(nyc_viz, x = "hour", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Hour")
 plt.show()
 
 sns.boxplot(nyc_viz, x = "month", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Month")
