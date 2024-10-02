@@ -75,5 +75,5 @@ The plot below illustrates the predicted electricity demand against the actual l
 
 The model predicts the highest demand of 7225 MW in July, with a peak hourly demand of 6384 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
 
-## Next Steps:
+## Next Steps
 The next phase of this project involves integrating weather data, such as temperature and humidity, to further improve the accuracy of the electricity demand forecasts. Additionally, I plan to evaluate the robustness of the results by comparing the LSTM model's performance with traditional forecasting methods like ARIMA, to determine if the deep learning approach offers a clear advantage over more conventional models.
