@@ -62,6 +62,6 @@ The model achieved RMSE of 142 MW on the test set (with actual interquartile dem
 
 ![NYC predicted vs actual](artifacts/nyc-predicted-actual-line.png)
 
-## Next Steps:
+## Next Steps
 The next phase of this project involves integrating weather data to further improve accuracy. I also plan to check the robustness of the results with GRU model and more traditional forecasting models like ARIMA.
 
