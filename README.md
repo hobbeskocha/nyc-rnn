@@ -66,7 +66,7 @@ Using PyTorch's DataLoader, I implemented a training loop with the following key
 
 After 20 epochs, the training converged with an MSE of approximately 0.0002 on the normalized data. For the test set, the inference loop achieved an MSE of 0.0004, again based on the normalized data.
 
-I then recorded the predicted and actual values into a dataframe and un-normalized the data back to its original units. This allowed for the calculation of the model's Root Mean Squared Error (RMSE), which was 147 MW. This is in comparison to an interquartile range of demand between 4900 and 6600 MW, highlighting the accuracy of the model relative to typical demand levels.
+I then recorded the predicted and actual values into a dataframe and un-normalized the data back to its original units. This allowed for the calculation of the model's Root Mean Squared Error (RMSE), which was 147 MW. This is compared to an interquartile range of demand between 4900 and 6600 MW, highlighting the accuracy of the model relative to typical demand levels.
 
 ## Findings 
 The plot below illustrates the predicted electricity demand against the actual load:
