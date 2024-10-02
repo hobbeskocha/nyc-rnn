@@ -1,8 +1,11 @@
 # Forecasting NYC Electricity Load using Deep Learning
 
+## Instructions
+For ease of version control, the Python notebooks have been saved as Python scripts. HTML views of the notebooks are available [here](html/html_preview.md). 
+
 ## Overview
 
-This is an ongoing personal project conducted by [Ayush Shrestha](https://www.linkedin.com/in/ayush-yoshi-shrestha/). This project analyzes hourly electricity demand data for the city of New York from June 2021 to Sept 2024 using a recurrent neural network (RNN).The dataset, obtained from the U.S. Energy Information Administration (EIA), can be accessed [here](https://www.eia.gov/electricity/wholesalemarkets/data.php?rto=nyiso)
+This is an ongoing personal project conducted by [Ayush Shrestha](https://www.linkedin.com/in/ayush-yoshi-shrestha/). This project analyzes hourly electricity demand data for the city of New York from June 2021 to September 2024 using a recurrent neural network (RNN) in PyTorch. The dataset, obtained from the U.S. Energy Information Administration (EIA), can be accessed [here](https://www.eia.gov/electricity/wholesalemarkets/data.php?rto=nyiso)
 
 ## Business Objective
 
@@ -42,26 +45,35 @@ I then plotted a line chart of electricity demand over time, allowing me to iden
 ## Model Configuration
 
 **Data Normalization**: 
-The training and test sets were normalized by scaling the electricity demand values between 0 and 1. This normalization was crucial to help that the RNN model converge more effectively during training by standardizing the input range.
+The training and test sets were normalized by scaling the electricity demand values between 0 and 1. This normalization was crucial to help the RNN model converge more effectively during training by standardizing the input range.
 
 **Model Selection**:
-I chose LSTM model for future electricity demand forecasting due to its ability to capture long-term dependencies and sequential behavior in time series data.
-The architecture consisted of two LSTM layers with 50 units (neurons) each. While increasing the number of layers and units can capture complex temporal dependencies, it also increases the risk of overfitting. To address this, I applied regularization techniques, including Dense and Dropout layers. To capture the nonlinearity and learn the complex pattern of the data, I used ReLU activation function. By outputting 0 to negative values, ReLU prevents vanishing gradient problem. 
+To effectively capture long-term dependencies and sequential patterns in the time-series data, a Long Short-Term Memory (LSTM) model was selected for forecasting future electricity demand.
+
+Following object-oriented design principles, I defined classes to manage both the dataset and the model architecture. The LSTM architecture consists of the following components:
+- Two LSTM layers with 50 neurons each, designed to capture the temporal dynamics of the data.
+- Dropout layers, with a 10% probability, after each LSTM layer to prevent overfitting. While additional layers and neurons can capture more complex relationships, they also increase the risk of overfitting, which the dropout layers mitigate by performing regularization.
+- A Linear layer that condenses the output from the LSTM layers down to a single value, enabling the model to produce a continuous regression output for electricity demand predictions.
 
 ## Model Training and Evaluation
-The LSTM model was implemented using PyTorch. Data from June 1, 2021 to December 31, 2023 was used as training set, while the remaining data was set aside for testing. The sliding window size (number of past observations) is 24 hours. Key hyperparameters:
-LSTM units = 50 (neurons)
-Batch size= 32
-Number of epochs = 20
-Learning rate = 0.001
-Dropouts = 0.2 (to take care of overfitting)
-Since the task involves time series data, Mean Squared Error loss function was used. Adam optimizer was employed to adjust the weight and tune the learning rate during back-propagation and aid better convergence.
 
-## Results and Interpretation 
-The model achieved RMSE of 142 MW on the test set (with actual interquartile demand ranging from 4900 to 6600 MW). The predicted highest demand of 7225 MW occurred in July, and the peak hourly demand of 6384 at 6 p.m. EST. These predictions from LSTM model suggest that NYC utilities should ensure that the grid is reinforced to handle higher demands during summer evenings. Furthermore, allocating additional resources during peak-demand periods could prevent blackouts or system overloads. Utilities may also incentivize consumers to reduce usage during peak hours, especially in the evenings. Below we see the plot of the predicted load against the actual load.
+Using PyTorch's DataLoader, I implemented a training loop with the following key hyperparameters:
+- A sliding window size of 24 hours, where each set of 24 hours is used to predict the 25th hour.
+- A batch size of 32.
+- 20 training epochs.
+- The Adam optimizer with a learning rate of 0.0001 to adjust the model's weights during backpropagation.
+- Mean Squared Error (MSE) as the loss function, suitable for this regression task.
+
+After 20 epochs, the training converged with an MSE of approximately 0.0002 on the normalized data. For the test set, the inference loop achieved an MSE of 0.0004, again based on the normalized data.
+
+I then recorded the predicted and actual values into a dataframe and un-normalized the data back to its original units. This allowed for the calculation of the model's Root Mean Squared Error (RMSE), which was 147 MW. This is in comparison to an interquartile range of demand between 4900 and 6600 MW, highlighting the accuracy of the model relative to typical demand levels.
+
+## Findings 
+The plot below illustrates the predicted electricity demand against the actual load:
 
 ![NYC predicted vs actual](artifacts/nyc-predicted-actual-line.png)
 
-## Next Steps:
-The next phase of this project involves integrating weather data to further improve accuracy. I also plan to check the robustness of the results with GRU model and more traditional forecasting models like ARIMA.
+The model predicts the highest demand of 7225 MW in July, with a peak hourly demand of 6384 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
 
+## Next Steps:
+The next phase of this project involves integrating weather data, such as temperature and humidity, to further improve the accuracy of the electricity demand forecasts. Additionally, I plan to evaluate the robustness of the results by comparing the LSTM model's performance with traditional forecasting methods like ARIMA, to determine if the deep learning approach offers a clear advantage over more conventional models.
