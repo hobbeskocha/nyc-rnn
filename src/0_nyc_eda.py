@@ -166,7 +166,7 @@ def impute_missing_by_seasonal_average(df):
 
 # +
 nyc_ny_train.index = nyc_ny_train["UTC_Timestamp"]
-nyc_ny_train.drop(["UTC_Timestamp"], axis=1, inplace = True)
+nyc_ny_train = nyc_ny_train.drop(["UTC_Timestamp"], axis=1)
 temp = nyc_ny_train
 
 temp["month"] = temp.index.month
@@ -174,9 +174,9 @@ temp["day"] = temp.index.day
 temp["hour"] = temp.index.hour
 
 temp_interpolate = impute_missing_by_seasonal_average(temp)
-temp_interpolate.interpolate(method = "time", inplace = True)
+temp_interpolate = temp_interpolate.interpolate(method = "time")
 
-temp_interpolate.drop(columns=["month", "day", "hour"], inplace=True)
+temp_interpolate = temp_interpolate.drop(columns=["month", "day", "hour"])
 
 print(temp_interpolate.info())
 temp_interpolate.head()
@@ -192,7 +192,7 @@ print(nyc_ny_train_daily.shape)
 nyc_ny_train_daily.head()
 
 nyc_ny_test.index = nyc_ny_test["UTC_Timestamp"]
-nyc_ny_test.drop(["UTC_Timestamp"], axis = 1, inplace = True)
+nyc_ny_test = nyc_ny_test.drop(["UTC_Timestamp"], axis = 1)
 nyc_ny_test_daily = nyc_ny_test.resample("D").sum()
 nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
