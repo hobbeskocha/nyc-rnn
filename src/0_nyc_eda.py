@@ -208,16 +208,20 @@ nyc_viz["month"] = nyc_viz.index.month
 nyc_viz["hour"] = nyc_viz.index.hour
 
 # +
-sns.boxplot(nyc_viz, x = "hour", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Hour")
+nyc_load_hour = sns.boxplot(nyc_viz, x = "hour", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Hour")
+plt.savefig("../artifacts/nyc-box-hour.png")
 plt.show()
 
-sns.boxplot(nyc_viz, x = "month", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Month")
+nyc_load_month = sns.boxplot(nyc_viz, x = "month", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Month")
+plt.savefig("../artifacts/nyc-box-month.png")
 plt.show()
 
-sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Quarter")
+nyc_load_quarter = sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Quarter")
+plt.savefig("../artifacts/nyc-box-quarter.png")
 plt.show()
 
-sns.boxplot(nyc_viz, x = "year", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Year")
+nyc_load_year = sns.boxplot(nyc_viz, x = "year", y = "New_York_City_Actual_Load__MW_").set(title = "NYC Load by Year")
+plt.savefig("../artifacts/nyc-box-year.png")
 plt.show()
 
 # +
@@ -235,9 +239,11 @@ plt.show()
 
 # +
 sns.histplot(nyc_ny_train_daily["New_York_City_Actual_Load__MW_"]).set(title = "NYC Load Daily")
+plt.savefig("../artifacts/nyc-hist-load-daily.png")
 plt.show()
 
 sns.histplot(nyc_ny_train["New_York_City_Actual_Load__MW_"]).set(title = "NYC Load Hourly")
+plt.savefig("../artifacts/nyc-hist-load-hourly.png")
 plt.show()
 
 # +
@@ -246,12 +252,15 @@ plt.show()
 
 sns.histplot(nyc_ny_train["New_York_City___JFK_Airport_Temperature__Fahrenheit_"]).set(title = "NYC Temperature Hourly")
 plt.show()
-# -
 
+# +
 plt.figure(figsize = (20, 10))
 sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Training Set")
 plt.xticks(rotation = 45)
 plt.show()
+
+plt.savefig("../artifacts/nyc-training-load.png")
+# -
 
 plt.figure(figsize = (20, 10))
 sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Test Set")
