@@ -231,6 +231,8 @@ nyc_predictions_daily = nyc_predictions.resample("D").sum()
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
+
+plt.savefig("../artifacts/nyc-predicted-actual-line.png")
 plt.show()
 # -
 

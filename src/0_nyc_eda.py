@@ -257,9 +257,9 @@ plt.show()
 plt.figure(figsize = (20, 10))
 sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Training Set")
 plt.xticks(rotation = 45)
-plt.show()
 
 plt.savefig("../artifacts/nyc-training-load.png")
+plt.show()
 # -
 
 plt.figure(figsize = (20, 10))

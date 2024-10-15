@@ -27,7 +27,7 @@ At this stage, the data was split into the training and test sets, using data fr
 
 
 **Load Imputation**:
-In the training set, an initial imputation was carried out to address the missing load values. Missing values were filled using the average demand from the same period in previous years. For cases where no prior periods were available for reference, such as missing data in 2021, time-based interpolation was applied. In contrast for the test set, a simpler forward-fill method was used to impute missing values, for a simple and consistent solution. 
+In the training set, missing values were initially filled using the average demand from the same period in previous years. This approach was chosen due to the data spanning only three years, with no obvious trend. For cases where no prior periods were available for reference, such as missing data in 2021, linear time-based interpolation was applied. In contrast for the test set, to prevent data leakage, a simpler forward-fill method was used to impute missing values. 
 
 ## Exploratory Data Analysis (EDA)
 
