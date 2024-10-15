@@ -120,8 +120,8 @@ batch_size = 32
 input_size = 2
 hidden_size = 50
 num_layers = 2
-dropout_probability = 0.1
-epochs = 20
+dropout_probability = 0.2
+epochs = 30
 
 normalizer = MinMaxScaler(feature_range=(0, 1))
 nyc_train_normalized = nyc_train.copy()
