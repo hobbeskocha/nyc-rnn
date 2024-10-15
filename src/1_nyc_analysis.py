@@ -28,7 +28,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, root_mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 # -
 
 torch.manual_seed(13)
@@ -41,8 +41,8 @@ np.random.seed(13)
 nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
 nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
 
-nyc_train.columns = ["Actual_Load_MW"]
-nyc_test.columns = ["Actual_Load_MW"]
+nyc_train.columns = ["Actual_Load_MW", "Temperature Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature Fahrenheit"]
 # -
 
 nyc_train.info()
@@ -60,14 +60,14 @@ nyc_test.head()
 class ElectricLoadDataset(Dataset):
     def __init__(self, df, seq_len = 24):
         self.seq_len = seq_len
-        self.data = df["Actual_Load_MW"].values.reshape(-1, 1)
+        self.data = df.values
 
     def __len__(self):
         return len(self.data) - self.seq_len
     
     def __getitem__(self, idx):
         x = self.data[idx:idx + self.seq_len]
-        y = self.data[idx + self.seq_len]
+        y = self.data[idx + self.seq_len, 0]
         return torch.tensor(x, dtype = torch.float32), torch.tensor(y, dtype = torch.float32)
     
 class LSTMModel(nn.Module):
@@ -117,7 +117,7 @@ def init_weights(m):
 # +
 sequence_length = 24
 batch_size = 32
-input_size = 1
+input_size = 2
 hidden_size = 50
 num_layers = 2
 dropout_probability = 0.1
@@ -125,7 +125,9 @@ epochs = 20
 
 normalizer = MinMaxScaler(feature_range=(0, 1))
 nyc_train_normalized = nyc_train.copy()
-nyc_train_normalized["Actual_Load_MW"] = normalizer.fit_transform(nyc_train_normalized)
+nyc_train_normalized = pd.DataFrame(normalizer.fit_transform(nyc_train_normalized),
+                                     columns=nyc_train.columns,
+                                     index=nyc_train.index)
 
 train_elec_dataset = ElectricLoadDataset(nyc_train_normalized, sequence_length)
 train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuffle = False)
@@ -155,13 +157,16 @@ loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": losses})
 sns.lineplot(loss_df, x = "epoch", y = "loss")
 plt.xlabel("Epochs")
 plt.ylabel("MSE Loss")
+plt.title("Training Loss over 20 Epochs")
 plt.show()
 
 # ### Model Inference
 
 # +
 nyc_test_normalized = nyc_test.copy()
-nyc_test_normalized["Actual_Load_MW"] = normalizer.transform(nyc_test_normalized)
+nyc_test_normalized = pd.DataFrame(normalizer.transform(nyc_test_normalized),
+                                    columns=nyc_test.columns,
+                                    index=nyc_test.index)
 nyc_test_normalized = nyc_test_normalized.ffill(axis = 0)
 
 test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
@@ -180,7 +185,7 @@ with torch.no_grad():
         predictions.append(output.numpy())
         actuals.append(label.numpy())
         
-        loss = mse(output, label)
+        loss = mse(output, label.view(-1, 1))
         total_mse += loss.item() * seq.size(0)
         n_samples += seq.size(0)
 
@@ -189,26 +194,32 @@ print("Test MSE: ", avg_mse)
 
 predictions = np.concatenate(predictions, axis = 0)
 actuals = np.concatenate(actuals, axis = 0)
-predictions = normalizer.inverse_transform(predictions)
-actuals = normalizer.inverse_transform(actuals)
 
 # +
-actuals = pd.Series(actuals.squeeze())
-predictions = pd.Series(predictions.squeeze())
+data_predictions = {"predictions": pd.Series(predictions.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature Fahrenheit"].values[24:])}
+data_predictions = pd.DataFrame(data_predictions)
 
-data = {"Predicted_Load": predictions,
-        "Actual_Load": actuals}
+data_actuals = {"actuals": pd.Series(actuals.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature Fahrenheit"].values[24:])}
+data_actuals = pd.DataFrame(data_actuals)
 
-model_predictions = pd.concat(data, axis = 1)
+data_predictions = normalizer.inverse_transform(data_predictions)
+data_actuals = normalizer.inverse_transform(data_actuals)
+
+# +
+data = {"Predicted_Load": data_predictions[:, 0],
+        "Actual_Load": data_actuals[:, 0]}
+
+model_predictions = pd.DataFrame(data)
 model_predictions.index = nyc_test[24:].index
 model_predictions
 # -
 
 model_predictions.isna().sum()
 
-model_mse = mean_squared_error(model_predictions["Actual_Load"], model_predictions["Predicted_Load"])
 model_rmse = root_mean_squared_error(model_predictions["Actual_Load"], model_predictions["Predicted_Load"])
-print(model_mse, model_rmse)
+print(model_rmse)
 
 nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp")
 nyc_predictions
