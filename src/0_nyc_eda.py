@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: winery-project
+#     display_name: rnn
 #     language: python
 #     name: python3
 # ---
@@ -30,82 +30,144 @@ nyc_2022 = pd.read_csv("../data/nyiso_load_act_hr_2022.csv", header = 3)
 nyc_2023 = pd.read_csv("../data/nyiso_load_act_hr_2023.csv", header = 3)
 nyc_2024 = pd.read_csv("../data/nyiso_load_act_hr_2024.csv", header = 3)
 
-# ## Merge Dataframes
+nyc_temp_2021 = pd.read_csv("../data/nyiso_temp_hr_2021.csv", header = 3)
+nyc_temp_2022 = pd.read_csv("../data/nyiso_temp_hr_2022.csv", header = 3)
+nyc_temp_2023 = pd.read_csv("../data/nyiso_temp_hr_2023.csv", header = 3)
+nyc_temp_2024 = pd.read_csv("../data/nyiso_temp_hr_2024.csv", header = 3)
+
+# ## Define Dataframes
 
 print(list(nyc_2021.columns) == list(nyc_2022.columns) 
       and list(nyc_2022.columns) == list(nyc_2023.columns) 
       and list(nyc_2023.columns) == list(nyc_2024.columns))
+
+print(list(nyc_temp_2021.columns) == list(nyc_temp_2022.columns) 
+      and list(nyc_temp_2022.columns) == list(nyc_temp_2023.columns) 
+      and list(nyc_temp_2023.columns) == list(nyc_temp_2024.columns))
 
 # +
 nyc_complete = pd.concat([nyc_2021, nyc_2022, nyc_2023, nyc_2024], axis = 0)
 print(nyc_complete.shape)
 
 nyc_complete.head()
+
+# +
+nyc_temperature_complete = pd.concat([nyc_temp_2021, nyc_temp_2022, nyc_temp_2023, nyc_temp_2024], axis = 0)
+print(nyc_temperature_complete.shape)
+
+nyc_temperature_complete.head()
 # -
 
 nyc_complete.to_csv("../data/nyc_complete.csv", index = False)
+nyc_temperature_complete.to_csv("../data/nyc_temp_complete.csv", index=False)
 
-# ## Exploratory Data Analysis
+# ## Data Processing and Exploratory Data Analysis
 
 nyc_complete.info()
 
+nyc_temperature_complete.info()
+
 nyc_complete.isna().sum().sort_values()
+
+nyc_temperature_complete.isna().sum().sort_values()
 
 nyc_complete.columns = nyc_complete.columns.str.replace(r'[ \(\)\-]', '_', regex = True)
 nyc_complete.columns
 
+nyc_temperature_complete.columns = nyc_temperature_complete.columns.str.replace(r'[ \(\)\-\/]', '_', regex = True)
+nyc_temperature_complete.columns
+
 nyc_complete["UTC_Timestamp__Interval_Ending_"] = pd.to_datetime(nyc_complete["UTC_Timestamp__Interval_Ending_"], format = "%Y-%m-%d %H:%M:%S")
+nyc_temperature_complete["UTC_Timestamp__Interval_Ending_"] = pd.to_datetime(nyc_temperature_complete["UTC_Timestamp__Interval_Ending_"], format = "%Y-%m-%d %H:%M:%S")
 
 nyc_ny = nyc_complete[["UTC_Timestamp__Interval_Ending_", "J___New_York_City_Actual_Load__MW_"]]
-nyc_ny.head()
-
 nyc_ny.columns = ["UTC_Timestamp__Interval_Ending_", "New_York_City_Actual_Load__MW_"]
 nyc_ny.describe()
+
+nyc_ny_temperature = nyc_temperature_complete[["UTC_Timestamp__Interval_Ending_", "New_York_City___JFK_Airport_Temperature__Fahrenheit_"]]
+nyc_ny_temperature.columns = ["UTC_Timestamp__Interval_Ending_", "New_York_City___JFK_Airport_Temperature__Fahrenheit_"]
+nyc_ny_temperature.describe()
+
+# ### Include Full Date Range
+
+# +
+datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny["UTC_Timestamp__Interval_Ending_"].min(),
+                               end = nyc_ny["UTC_Timestamp__Interval_Ending_"].max(),
+                               freq = "1h"))
+datetime_index.columns = ["UTC_Timestamp"]
+
+temp_nyc = datetime_index.merge(nyc_ny, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
+
+temp_nyc.index = temp_nyc["UTC_Timestamp"]
+temp_nyc.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
+nyc_ny = temp_nyc
+
+# +
+datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_temperature["UTC_Timestamp__Interval_Ending_"].min(),
+                               end = nyc_ny_temperature["UTC_Timestamp__Interval_Ending_"].max(),
+                               freq = "1h"))
+datetime_index.columns = ["UTC_Timestamp"]
+
+temp_nyc_temp = datetime_index.merge(nyc_ny_temperature, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
+
+temp_nyc_temp.index = temp_nyc_temp["UTC_Timestamp"]
+temp_nyc_temp.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
+nyc_ny_temperature = temp_nyc_temp
+# -
+
+nyc_ny = pd.merge(nyc_ny, nyc_ny_temperature, on="UTC_Timestamp", how="left")
+print(nyc_ny.shape)
+nyc_ny.info()
 
 # ### Define Train-Test Split
 
 # +
-nyc_ny = nyc_ny.sort_values(by = "UTC_Timestamp__Interval_Ending_")
+nyc_ny.reset_index(inplace=True)
+nyc_ny = nyc_ny.sort_values(by = "UTC_Timestamp")
 
-nyc_ny_train = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year < 2024]
-nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp__Interval_Ending_"].dt.year >= 2024]
+nyc_ny_train = nyc_ny[nyc_ny["UTC_Timestamp"].dt.year < 2024]
+nyc_ny_test = nyc_ny[nyc_ny["UTC_Timestamp"].dt.year >= 2024]
 
 print(nyc_ny_train.shape, nyc_ny_test.shape)
-print(nyc_ny_train.tail(1))
-print(nyc_ny_test.head(1))
 # -
+
+nyc_ny_train.tail(1)
+
+nyc_ny_test.head(1)
 
 nyc_ny_train.describe()
 
 nyc_ny_test.describe()
 
 
-# ### Include Full Date Range and Impute Missing Values for Train Set
+# ### Impute Missing Values for Train Set
 
 def impute_missing_by_seasonal_average(df):
     for i in range(len(df)):
         if pd.isna(df.loc[df.index[i], "New_York_City_Actual_Load__MW_"]):
-            # Find all previous similar periods (same month, day, and hour)
+            # Find all previous similar periods (same month, day, and hour) for load
             similar_periods = df[(df['month'] == df['month'].iloc[i]) &
                                  (df['day'] == df['day'].iloc[i]) &
                                  (df['hour'] == df['hour'].iloc[i]) &
                                  (df.index < df.index[i])]
-            
             if not similar_periods.empty:
                 df.loc[df.index[i], "New_York_City_Actual_Load__MW_"] = similar_periods["New_York_City_Actual_Load__MW_"].mean()
+        
+        if pd.isna(df.loc[df.index[i], "New_York_City___JFK_Airport_Temperature__Fahrenheit_"]):
+            # Find all previous similar periods (same month, day, and hour) for temperature
+            similar_periods = df[(df['month'] == df['month'].iloc[i]) &
+                                 (df['day'] == df['day'].iloc[i]) &
+                                 (df['hour'] == df['hour'].iloc[i]) &
+                                 (df.index < df.index[i])]
+            if not similar_periods.empty:
+                df.loc[df.index[i], "New_York_City___JFK_Airport_Temperature__Fahrenheit_"] = similar_periods["New_York_City___JFK_Airport_Temperature__Fahrenheit_"].mean()
     return df
 
 
 # +
-datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_train["UTC_Timestamp__Interval_Ending_"].min(),
-                               end = nyc_ny_train["UTC_Timestamp__Interval_Ending_"].max(),
-                               freq = "1h"))
-datetime_index.columns = ["UTC_Timestamp"]
-
-temp = datetime_index.merge(nyc_ny_train, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
-
-temp.index = temp["UTC_Timestamp"]
-temp.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
+nyc_ny_train.index = nyc_ny_train["UTC_Timestamp"]
+nyc_ny_train.drop(["UTC_Timestamp"], axis=1, inplace = True)
+temp = nyc_ny_train
 
 temp["month"] = temp.index.month
 temp["day"] = temp.index.day
@@ -129,25 +191,13 @@ nyc_ny_train.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
 print(nyc_ny_train_daily.shape)
 nyc_ny_train_daily.head()
 
-# ### Include Full Date Range for Test Set
-
-# +
-datetime_index = pd.DataFrame(pd.date_range(start = nyc_ny_test["UTC_Timestamp__Interval_Ending_"].min(),
-                               end = nyc_ny_test["UTC_Timestamp__Interval_Ending_"].max(),
-                               freq = "1h"))
-datetime_index.columns = ["UTC_Timestamp"]
-temp = datetime_index.merge(nyc_ny_test, how = "left", left_on = "UTC_Timestamp", right_on = "UTC_Timestamp__Interval_Ending_")
-
-temp.index = temp["UTC_Timestamp"]
-temp.drop(["UTC_Timestamp", "UTC_Timestamp__Interval_Ending_"], axis = 1, inplace= True)
-
-temp.info()
-temp.head()
-# -
-
-nyc_ny_test = temp
+nyc_ny_test.index = nyc_ny_test["UTC_Timestamp"]
+nyc_ny_test.drop(["UTC_Timestamp"], axis = 1, inplace = True)
 nyc_ny_test_daily = nyc_ny_test.resample("D").sum()
 nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
+
+print(nyc_ny_test_daily.shape)
+nyc_ny_test_daily.head()
 
 # ### Data Visualization
 
@@ -171,10 +221,30 @@ sns.boxplot(nyc_viz, x = "year", y = "New_York_City_Actual_Load__MW_").set(title
 plt.show()
 
 # +
-sns.histplot(nyc_ny_train_daily).set(title = "NYC Daily")
+sns.boxplot(nyc_viz, x = "hour", y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Temperature by Hour")
 plt.show()
 
-sns.histplot(nyc_ny_train).set(title = "NYC Hourly")
+sns.boxplot(nyc_viz, x = "month", y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Temperature by Month")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Temperature by Quarter")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "year", y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Temperature by Year")
+plt.show()
+
+# +
+sns.histplot(nyc_ny_train_daily["New_York_City_Actual_Load__MW_"]).set(title = "NYC Load Daily")
+plt.show()
+
+sns.histplot(nyc_ny_train["New_York_City_Actual_Load__MW_"]).set(title = "NYC Load Hourly")
+plt.show()
+
+# +
+sns.histplot(nyc_ny_train_daily["New_York_City___JFK_Airport_Temperature__Fahrenheit_"]).set(title = "NYC Temperature Daily")
+plt.show()
+
+sns.histplot(nyc_ny_train["New_York_City___JFK_Airport_Temperature__Fahrenheit_"]).set(title = "NYC Temperature Hourly")
 plt.show()
 # -
 
