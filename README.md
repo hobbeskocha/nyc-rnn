@@ -21,7 +21,7 @@ The original dataset comprises over 27,000 hourly observations, covering the per
 ## Data Processing
 
 **Missing Timestamps**:
-I started by importing and merging all the CSV files to create a single comprehensive dataset. Although the dataset initially appeared to be complete with no missing values, further inspection revealed several missing timestamps, ranging from individual hours to multiple days. To address this, a separate list containing the full range of dates was generated and left-joined with the original dataset. This ensured that the entire date range was included, which naturally introduced missing values for the timestamps that were absent in the original data. 
+I started by importing and merging all the CSV files to create a single comprehensive dataset. Although the dataset initially appeared to be complete with no missing values, further inspection revealed several missing timestamps, ranging from individual hours to multiple days. To address this, a separate list of the full range of dates was generated and used to re-index with the original dataset. This ensured that the entire date range was included, which naturally introduced missing values for the timestamps that were absent in the original data. 
 
 At this stage, the data was split into the training and test sets, using data from 2021 to 2023 for training and data from 2024 as test. This split was conducted early in the process to prevent any cross-contamination between the training and test data during subsequent data cleaning and transformations.
 
