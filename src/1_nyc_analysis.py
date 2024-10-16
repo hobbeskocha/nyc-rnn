@@ -82,6 +82,7 @@ class LSTMModel(nn.Module):
             batch_first = True,
             dropout = dropout_prob
         )
+        self.attention = nn.Linear(hidden, 1)
         self.dropout = nn.Dropout(dropout_prob)
         self.fc = nn.Linear(hidden, 1)
 
@@ -90,8 +91,11 @@ class LSTMModel(nn.Module):
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
 
         out, _ = self.lstm(x, (h0, c0))
-        out = self.dropout(out[:, -1, :])
-        out = self.fc(out)
+        attention_scores = self.attention(out).squeeze(-1)
+        attention_weights = torch.softmax(attention_scores, dim = 1)
+        context_vector = torch.sum(out * attention_weights.unsqueeze(-1), dim = 1)
+        context_vector = self.dropout(context_vector)
+        out = self.fc(context_vector)
         return out
 
 
@@ -225,11 +229,12 @@ nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp
 nyc_predictions
 
 # +
+plt.figure(figsize = (10, 7))
 nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
 nyc_predictions_daily = nyc_predictions.resample("D").sum()
 
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
+sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.6)
 plt.xticks(rotation = 45)
 
 plt.savefig("../artifacts/nyc-predicted-actual-line.png")
