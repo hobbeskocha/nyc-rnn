@@ -81,7 +81,7 @@ The plot below illustrates the predicted electricity demand against the actual l
 
 ![NYC predicted vs actual](artifacts/nyc-predicted-actual-line.png)
 
-The model predicts the highest demand of 7239 MW in July, with a peak hourly demand of 6378 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
+The model predicts the highest demand of 7271 MW in July, with a peak hourly demand of 6393 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
 
 ## Next Steps
 
