@@ -308,11 +308,25 @@ print(xgb_y_train.shape)
 print(xgb_X_test.shape)
 print(xgb_y_test.shape)
 
+normalizer_X = MinMaxScaler(feature_range=(0, 1))
+X_columns = xgb_X_train.columns
+xgb_X_train = pd.DataFrame(normalizer_X.fit_transform(xgb_X_train), columns=X_columns)
+xgb_X_test = pd.DataFrame(normalizer_X.transform(xgb_X_test), columns=X_columns)
+
+normalizer_y = MinMaxScaler(feature_range=(0, 1))
+y_columns = xgb_y_train.columns
+xgb_y_train = pd.DataFrame(normalizer_y.fit_transform(xgb_y_train), columns=y_columns)
+xgb_y_test = pd.DataFrame(normalizer_y.transform(xgb_y_test), columns=y_columns)
+
 # ### XGBoost Training
 
-xgb_model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators = 500)
+xgb_model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators = 100)
 xgb_model.fit(xgb_X_train, xgb_y_train)
 
+# +
 xgb_y_pred = xgb_model.predict(xgb_X_test)
-xgb_rmse = root_mean_squared_error(xgb_y_test, xgb_y_pred)
+xgb_y_pred = xgb_y_pred.reshape(-1, 1)
+
+xgb_rmse = root_mean_squared_error(normalizer_y.inverse_transform(xgb_y_test),
+                                   normalizer_y.inverse_transform(xgb_y_pred))
 print(xgb_rmse)
