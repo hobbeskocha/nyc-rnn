@@ -22,6 +22,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import random
+import xgboost as xgb
 
 import torch
 import torch.nn as nn
@@ -41,8 +42,8 @@ np.random.seed(13)
 nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
 nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
 
-nyc_train.columns = ["Actual_Load_MW", "Temperature Fahrenheit"]
-nyc_test.columns = ["Actual_Load_MW", "Temperature Fahrenheit"]
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 # -
 
 nyc_train.info()
@@ -52,7 +53,7 @@ nyc_test.info()
 nyc_test.head()
 
 
-# ## Data Processing
+# ## LSTM Modeling
 
 # ### Class Definitions
 
@@ -164,10 +165,10 @@ plt.show()
 
 # +
 nyc_test_normalized = nyc_test.copy()
+nyc_test_normalized = nyc_test_normalized.ffill(axis = 0)
 nyc_test_normalized = pd.DataFrame(normalizer.transform(nyc_test_normalized),
                                     columns=nyc_test.columns,
                                     index=nyc_test.index)
-nyc_test_normalized = nyc_test_normalized.ffill(axis = 0)
 
 test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
 test_dataloader = DataLoader(test_elec_dataset, batch_size = batch_size, shuffle  = False)
@@ -197,11 +198,11 @@ actuals = np.concatenate(actuals, axis = 0)
 
 # +
 data_predictions = {"predictions": pd.Series(predictions.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature Fahrenheit"].values[24:])}
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
 data_predictions = pd.DataFrame(data_predictions)
 
 data_actuals = {"actuals": pd.Series(actuals.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature Fahrenheit"].values[24:])}
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
 data_actuals = pd.DataFrame(data_actuals)
 
 data_predictions = normalizer.inverse_transform(data_predictions)
@@ -229,7 +230,7 @@ nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
 nyc_predictions_daily = nyc_predictions.resample("D").sum()
 
 sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
+sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
 
 plt.savefig("../artifacts/nyc-predicted-actual-line.png")
@@ -260,3 +261,72 @@ print(avg_peak_month_load)
 
 avg_peak_hourly_load = nyc_predictions.query("hour == 22")[["Predicted_Load", "Actual_Load"]].mean()
 print(avg_peak_hourly_load)
+# -
+
+# ## XGBoost Modeling
+
+# +
+nyc_train_xgb = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
+nyc_test_xgb = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
+
+nyc_train_xgb.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test_xgb.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+# -
+
+# ### Feature Engineering
+
+sequence = 24
+nyc_test_xgb.ffill(axis=0, inplace=True)
+
+# +
+xgb_X_train = nyc_train_xgb.copy()
+xgb_y_train = nyc_train_xgb[["Actual_Load_MW"]]
+
+for s in range(1, sequence + 1):
+    xgb_X_train[f"load_lag_{s}"] = xgb_X_train[["Actual_Load_MW"]].shift(s)
+    xgb_X_train[f"temp_lag_{s}"] = xgb_X_train[["Temperature_Fahrenheit"]].shift(s)
+
+xgb_X_train = xgb_X_train.drop(["Actual_Load_MW", "Temperature_Fahrenheit"], axis = 1)
+xgb_X_train.dropna(axis = 0, inplace = True)
+xgb_y_train = xgb_y_train[24:]
+
+# +
+xgb_X_test = nyc_test_xgb.copy()
+xgb_y_test = nyc_test_xgb[["Actual_Load_MW"]]
+
+for s in range(1, sequence + 1):
+    xgb_X_test[f"load_lag_{s}"] = xgb_X_test[["Actual_Load_MW"]].shift(s)
+    xgb_X_test[f"temp_lag_{s}"] = xgb_X_test[["Temperature_Fahrenheit"]].shift(s)
+
+xgb_X_test = xgb_X_test.drop(["Actual_Load_MW", "Temperature_Fahrenheit"], axis = 1)
+xgb_X_test.dropna(axis = 0, inplace = True)
+xgb_y_test = xgb_y_test[24:]
+# -
+
+print(xgb_X_train.shape)
+print(xgb_y_train.shape)
+print(xgb_X_test.shape)
+print(xgb_y_test.shape)
+
+normalizer_X = MinMaxScaler(feature_range=(0, 1))
+X_columns = xgb_X_train.columns
+xgb_X_train = pd.DataFrame(normalizer_X.fit_transform(xgb_X_train), columns=X_columns)
+xgb_X_test = pd.DataFrame(normalizer_X.transform(xgb_X_test), columns=X_columns)
+
+normalizer_y = MinMaxScaler(feature_range=(0, 1))
+y_columns = xgb_y_train.columns
+xgb_y_train = pd.DataFrame(normalizer_y.fit_transform(xgb_y_train), columns=y_columns)
+xgb_y_test = pd.DataFrame(normalizer_y.transform(xgb_y_test), columns=y_columns)
+
+# ### XGBoost Training
+
+xgb_model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators = 100)
+xgb_model.fit(xgb_X_train, xgb_y_train)
+
+# +
+xgb_y_pred = xgb_model.predict(xgb_X_test)
+xgb_y_pred = xgb_y_pred.reshape(-1, 1)
+
+xgb_rmse = root_mean_squared_error(normalizer_y.inverse_transform(xgb_y_test),
+                                   normalizer_y.inverse_transform(xgb_y_pred))
+print(xgb_rmse)
