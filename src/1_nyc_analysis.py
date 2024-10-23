@@ -309,14 +309,16 @@ print(xgb_X_test.shape)
 print(xgb_y_test.shape)
 
 normalizer_X = MinMaxScaler(feature_range=(0, 1))
-X_columns = xgb_X_train.columns
-xgb_X_train = pd.DataFrame(normalizer_X.fit_transform(xgb_X_train), columns=X_columns)
-xgb_X_test = pd.DataFrame(normalizer_X.transform(xgb_X_test), columns=X_columns)
+xgb_X_train = pd.DataFrame(normalizer_X.fit_transform(xgb_X_train),
+                            columns=xgb_X_train.columns, index=xgb_X_train.index)
+xgb_X_test = pd.DataFrame(normalizer_X.transform(xgb_X_test),
+                           columns=xgb_X_test.columns, index=xgb_X_test.index)
 
 normalizer_y = MinMaxScaler(feature_range=(0, 1))
-y_columns = xgb_y_train.columns
-xgb_y_train = pd.DataFrame(normalizer_y.fit_transform(xgb_y_train), columns=y_columns)
-xgb_y_test = pd.DataFrame(normalizer_y.transform(xgb_y_test), columns=y_columns)
+xgb_y_train = pd.DataFrame(normalizer_y.fit_transform(xgb_y_train),
+                            columns=xgb_y_train.columns, index=xgb_y_train.index)
+xgb_y_test = pd.DataFrame(normalizer_y.transform(xgb_y_test),
+                           columns=xgb_y_test.columns, index=xgb_y_test.index)
 
 # ### XGBoost Training
 
@@ -330,3 +332,17 @@ xgb_y_pred = xgb_y_pred.reshape(-1, 1)
 xgb_rmse = root_mean_squared_error(normalizer_y.inverse_transform(xgb_y_test),
                                    normalizer_y.inverse_transform(xgb_y_pred))
 print(xgb_rmse)
+
+# +
+xgb_y_viz = xgb_y_test.copy()
+xgb_y_viz["Predicted_Load"] = normalizer_y.inverse_transform(xgb_y_pred)
+xgb_y_viz["Actual_Load_MW"] = normalizer_y.inverse_transform(xgb_y_viz[["Actual_Load_MW"]])
+xgb_y_viz.index = pd.to_datetime(xgb_y_viz.index)
+xgb_y_viz_daily = xgb_y_viz.resample("D").sum()
+
+sns.lineplot(xgb_y_viz, x = xgb_y_viz.index, y = "Predicted_Load", label = "Predicted")
+sns.lineplot(xgb_y_viz, x = xgb_y_viz.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
+plt.xticks(rotation = 45)
+
+plt.savefig("../artifacts/xgb-predicted-actual-line.png")
+plt.show()
