@@ -6,7 +6,7 @@ For ease of version control, the Python notebooks have been saved as Python scri
 
 ## Overview
 
-This is an ongoing personal project conducted by [Ayush Shrestha](https://www.linkedin.com/in/ayush-yoshi-shrestha/). This project analyzes hourly electricity demand and temperature data for the city of New York from June 2021 to September 2024 using a recurrent neural network (RNN) in PyTorch. The dataset, obtained from the U.S. Energy Information Administration (EIA), can be accessed [here](https://www.eia.gov/electricity/wholesalemarkets/data.php?rto=nyiso)
+This is an personal project conducted by [Ayush Shrestha](https://www.linkedin.com/in/ayush-yoshi-shrestha/). This project analyzes hourly electricity demand and temperature data for the city of New York from June 2021 to September 2024 using recurrent neural networks (RNN) built using PyTorch as well as XGBoost models. The dataset, obtained from the U.S. Energy Information Administration (EIA), can be accessed [here](https://www.eia.gov/electricity/wholesalemarkets/data.php?rto=nyiso)
 
 ## Business Objective
 
@@ -47,16 +47,21 @@ I then plotted a line chart of electricity demand over time, allowing me to iden
 ## Model Configuration
 
 **Data Normalization**:
-The training and test sets were normalized by scaling the feature values between 0 and 1. This normalization was crucial to help the RNN model converge more effectively during training by standardizing the input range.
+The training and test sets were normalized by scaling the feature values between 0 and 1. This normalization was crucial to help the models converge more effectively during training by standardizing the input range. Additionally since XGBoost doesn't support time-series forecasting by default, 24 lag features were created for both the load and temperature to allow predicting the current demand. 
 
 **Model Selection**:
-To effectively capture long-term dependencies and sequential patterns in the time-series data, a Long Short-Term Memory (LSTM) model was selected for forecasting future electricity demand.
+To effectively capture long-term dependencies and sequential patterns in the time-series data, both Long Short-Term Memory (LSTM) and Gated Recurrent Unit (GRU) networks were selected for forecasting future electricity demand. 
 
-Following object-oriented design principles, I defined classes to manage both the dataset and the model architecture. The LSTM architecture consists of the following components:
+Following object-oriented design principles, I defined classes to manage both the dataset and the model architecture. The LSTM and GRU architecture consists of the following components:
 
-- Two LSTM layers with 50 neurons each, designed to capture the temporal dynamics of the data.
-- Dropout layers, with a 20% probability, after each LSTM layer to prevent overfitting. While additional layers and neurons can capture more complex relationships, they also increase the risk of overfitting, which the dropout layers mitigate by performing regularization.
-- A Linear layer that condenses the output from the LSTM layers down to a single value, enabling the model to produce a continuous regression output for electricity demand predictions.
+- Two LSTM/GRU layers with 50 neurons each, designed to capture the temporal dynamics of the data.
+- Dropout layers, with a 20% probability, after each LSTM/GRU layer to prevent overfitting. While additional layers and neurons can capture more complex relationships, they also increase the risk of overfitting, which the dropout layers mitigate by performing regularization.
+- A Linear layer that condenses the output from the LSTM/GRU layers down to a single value, enabling the model to produce a continuous regression output for electricity demand predictions.
+
+To provide a performance benchmark against the deep learning models, an XGBoost model was implemented as a robust, yet traditional, alternative. The model was configured with:
+
+- 100 weak learners, allowing it to incrementally build decision trees for enhanced predictive power.
+- Squared error as the objective function, allowing each weak learner to minimize prediction error with each iteration.
 
 ## Model Training and Evaluation
 
@@ -68,21 +73,26 @@ Using PyTorch's DataLoader, I implemented a training loop with the following key
 - The Adam optimizer with a learning rate of 0.0001 to adjust the model's weights during backpropagation.
 - Mean Squared Error (MSE) as the loss function, suitable for this regression task.
 
-After 30 epochs, the training converged with an MSE of approximately 0.0001 on the normalized data. For the test set, the inference loop achieved an average MSE of 0.0003, again based on the normalized data.
+After 30 epochs, the training converged with an MSE of approximately 0.0001 for LSTM and 0.0002 for GRU on the normalized data. For the test set, the inference loop achieved an average MSE of 0.0003 for LSTM and 0.0005 for GRU, again based on the normalized data. 
 
-I then recorded the predicted and actual values into a dataframe and un-normalized the data back to its original units. This allowed for the calculation of the model's Root Mean Squared Error (RMSE), which was 124 MW. This is compared to an interquartile range of demand between 4900 and 6600 MW, highlighting the accuracy of the model relative to typical demand levels.
+I then recorded the predicted and actual values into a dataframe and un-normalized the data back to its original units. This allowed for the calculation of the models' Root Mean Squared Error (RMSE), which was 124 MW for LSTM and 126 MW for GRU. In contrast, XGBoost achieved an RMSE of 86 MW. These are compared to an interquartile range of demand between 4900 and 6600 MW, highlighting the accuracy of the models relative to typical demand levels.
 
-**Note**:
-An initial baseline model was trained using only historical electricity demand data. This model achieved an RMSE of approximately 131 MW on the test set. In contrast, the subsequent model (desribed thus far, incorporating both historical demand and temperature data) resulted in an over 5% reduction in RMSE on the test set. This improvement demonstrates that while the model learned the most from historical demand patterns, the inclusion of temperature data provided a non-trivial enhancement to the prediction accuracy.
 
-## Findings
+## Findings & Conclusion
 
-The plot below illustrates the predicted electricity demand against the actual load:
+The plot below illustrates the predicted electricity demand against the actual load for LSTM, GRU, and XGBoost:
 
-![NYC predicted vs actual](artifacts/nyc-predicted-actual-line.png)
+![LSTM predicted vs actual](artifacts/nyc-predicted-actual-line.png)
 
-The model predicts the highest demand of 7271 MW in July, with a peak hourly demand of 6393 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
+![GRU predicted vs actual](artifacts/gru-predicted-actual-line.png)
 
-## Next Steps
+![XGBoost predicted vs actual](artifacts/xgb-predicted-actual-line.png)
 
-I plan to evaluate the robustness of the results by comparing the LSTM model's performance with traditional forecasting methods like ARIMA, to determine if the deep learning approach offers a clear advantage over more conventional models.
+XGBoost demonstrated better performance compared to the deep learning models, though the latter still achieved high accuracy. This may be due to a few factors, such as:
+
+- Data size limitations: The dataset may be too small for the deep learning models to fully capture the underlying patterns.
+- Effective feature engineering: The explicit feature engineering performed for the XGBoost model likely aided its convergence, even though these steps were essential to properly handle time-series regression.
+
+While this outcome differs from initial expectations, it underscores a key insight: deep learning is not a one-size-fits-all solution. A variety of factors, such as data size, feature complexity, and implementation costs, should be carefully considered to determine if deep learning is the best approach for a given use case and if the potential benefits justify the investment over time.
+
+As a final consideration, the models predict the highest demand of about 7300 MW in July, with a peak hourly demand of around 6400 MW occurring at 6 p.m. EST. These predictions indicate that NYC utilities should prioritize reinforcing the grid to handle increased demand, particularly during summer evenings when electricity usage tends to spike. Additionally, allocating extra resources during peak periods could help prevent blackouts or system overloads. Utilities may also consider implementing demand-side management strategies, such as incentivizing consumers to reduce electricity usage during peak hours, especially in the evenings, to maintain grid stability.
