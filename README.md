@@ -47,7 +47,7 @@ I then plotted a line chart of electricity demand over time, allowing me to iden
 ## Model Configuration
 
 **Data Normalization**:
-The training and test sets were normalized by scaling the feature values between 0 and 1. This normalization was crucial to help the models converge more effectively during training by standardizing the input range. Additionally since XGBoost doesn't support time-series forecasting by default, 24 lag features were created for both the load and temperature to predict the current load. 
+The training and test sets were normalized by scaling the feature values between 0 and 1. This normalization was crucial to help the models converge more effectively during training by standardizing the input range. Additionally since XGBoost doesn't support time-series forecasting by default, 24 lag features were created for both the load and temperature to allow predicting the current demand. 
 
 **Model Selection**:
 To effectively capture long-term dependencies and sequential patterns in the time-series data, both Long Short-Term Memory (LSTM) and Gated Recurrent Unit (GRU) networks were selected for forecasting future electricity demand. 
@@ -61,7 +61,7 @@ Following object-oriented design principles, I defined classes to manage both th
 To provide a performance benchmark against the deep learning models, an XGBoost model was implemented as a robust, yet traditional, alternative. The model was configured with:
 
 - 100 weak learners, allowing it to incrementally build decision trees for enhanced predictive power.
-- Squared error as the objective function, optimizing each weak learner to minimize prediction error with each iteration.
+- Squared error as the objective function, allowing each weak learner to minimize prediction error with each iteration.
 
 ## Model Training and Evaluation
 
