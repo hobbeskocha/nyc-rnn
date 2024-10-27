@@ -135,26 +135,26 @@ train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuff
 
 lstm = LSTMModel(input_size, hidden_size, num_layers, dropout_probability)
 lstm.apply(init_weights)
-criterion = nn.MSELoss()
-optimizer = optim.Adam(lstm.parameters(), lr = 0.0001)
-losses = list()
+lstm_criterion = nn.MSELoss()
+lstm_optimizer = optim.Adam(lstm.parameters(), lr = 0.0001)
+lstm_losses = list()
 # -
 
 lstm.train()
 for epoch in range(epochs):
     for x, y in train_dataloader:
         x = x.view(x.size(0), sequence_length, input_size)
-        optimizer.zero_grad()
+        lstm_optimizer.zero_grad()
         output = lstm(x)
-        loss = criterion(output, y.view(-1, 1))
+        loss = lstm_criterion(output, y.view(-1, 1))
         loss.backward()
         nn.utils.clip_grad_norm_(lstm.parameters(), max_norm = 1.0)
-        optimizer.step()
+        lstm_optimizer.step()
 
     print(f"Epoch {epoch + 1} with loss: {loss.item()}")
-    losses.append(loss.item())
+    lstm_losses.append(loss.item())
 
-lstm_loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": losses})
+lstm_loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": lstm_losses})
 sns.lineplot(lstm_loss_df, x = "epoch", y = "loss")
 plt.xlabel("Epochs")
 plt.ylabel("MSE Loss")
@@ -174,10 +174,10 @@ nyc_test_normalized = pd.DataFrame(normalizer.transform(nyc_test_normalized),
 
 test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
 test_dataloader = DataLoader(test_elec_dataset, batch_size = batch_size, shuffle  = False)
-predictions, actuals = list(), list()
-mse = nn.MSELoss()
-total_mse = 0
-n_samples = 0
+lstm_predictions, lstm_actuals = list(), list()
+lstm_mse = nn.MSELoss()
+lstm_total_mse = 0
+lstm_n_samples = 0
 
 lstm.eval()
 with torch.no_grad():
@@ -185,54 +185,54 @@ with torch.no_grad():
         seq = seq.view(seq.size(0), sequence_length, input_size)
         output = lstm(seq)
 
-        predictions.append(output.numpy())
-        actuals.append(label.numpy())
+        lstm_predictions.append(output.numpy())
+        lstm_actuals.append(label.numpy())
         
-        loss = mse(output, label.view(-1, 1))
-        total_mse += loss.item() * seq.size(0)
-        n_samples += seq.size(0)
+        loss = lstm_mse(output, label.view(-1, 1))
+        lstm_total_mse += loss.item() * seq.size(0)
+        lstm_n_samples += seq.size(0)
 
-avg_mse = total_mse / n_samples
-print("Test MSE: ", avg_mse)
+lstm_avg_mse = lstm_total_mse / lstm_n_samples
+print("Test MSE: ", lstm_avg_mse)
 
-predictions = np.concatenate(predictions, axis = 0)
-actuals = np.concatenate(actuals, axis = 0)
-
-# +
-data_predictions = {"predictions": pd.Series(predictions.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
-data_predictions = pd.DataFrame(data_predictions)
-
-data_actuals = {"actuals": pd.Series(actuals.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
-data_actuals = pd.DataFrame(data_actuals)
-
-data_predictions = normalizer.inverse_transform(data_predictions)
-data_actuals = normalizer.inverse_transform(data_actuals)
+lstm_predictions = np.concatenate(lstm_predictions, axis = 0)
+lstm_actuals = np.concatenate(lstm_actuals, axis = 0)
 
 # +
-data = {"Predicted_Load": data_predictions[:, 0],
-        "Actual_Load": data_actuals[:, 0]}
+lstm_data_predictions = {"predictions": pd.Series(lstm_predictions.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+lstm_data_predictions = pd.DataFrame(lstm_data_predictions)
 
-model_predictions = pd.DataFrame(data)
-model_predictions.index = nyc_test[24:].index
-model_predictions
+lstm_data_actuals = {"actuals": pd.Series(lstm_actuals.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+lstm_data_actuals = pd.DataFrame(lstm_data_actuals)
+
+lstm_data_predictions = normalizer.inverse_transform(lstm_data_predictions)
+lstm_data_actuals = normalizer.inverse_transform(lstm_data_actuals)
+
+# +
+lstm_data = {"Predicted_Load": lstm_data_predictions[:, 0],
+        "Actual_Load": lstm_data_actuals[:, 0]}
+
+lstm_model_predictions = pd.DataFrame(lstm_data)
+lstm_model_predictions.index = nyc_test[24:].index
+lstm_model_predictions
 # -
 
-model_predictions.isna().sum()
+lstm_model_predictions.isna().sum()
 
-lstm_model_rmse = root_mean_squared_error(model_predictions["Actual_Load"], model_predictions["Predicted_Load"])
+lstm_model_rmse = root_mean_squared_error(lstm_model_predictions["Actual_Load"], lstm_model_predictions["Predicted_Load"])
 print(lstm_model_rmse)
 
-nyc_predictions = pd.merge(nyc_test[24:], model_predictions, on = "UTC_Timestamp")
-nyc_predictions
+lstm_nyc_predictions = pd.merge(nyc_test[24:], lstm_model_predictions, on = "UTC_Timestamp")
+lstm_nyc_predictions
 
 # +
-nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
-nyc_predictions_daily = nyc_predictions.resample("D").sum()
+lstm_nyc_predictions.index = pd.to_datetime(lstm_nyc_predictions.index)
+lstm_nyc_predictions_daily = lstm_nyc_predictions.resample("D").sum()
 
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.7)
+sns.lineplot(lstm_nyc_predictions, x = lstm_nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
+sns.lineplot(lstm_nyc_predictions, x = lstm_nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
 plt.title("LSTM Load Demand Predictions vs Actuals")
 
@@ -240,29 +240,29 @@ plt.savefig("../artifacts/nyc-predicted-actual-line.png")
 plt.show()
 # -
 
-nyc_predictions.drop(["Actual_Load_MW"], axis = 1, inplace = True)
-nyc_predictions["month"] = nyc_predictions.index.month
-nyc_predictions["hour"] = nyc_predictions.index.hour
+lstm_nyc_predictions.drop(["Actual_Load_MW"], axis = 1, inplace = True)
+lstm_nyc_predictions["month"] = lstm_nyc_predictions.index.month
+lstm_nyc_predictions["hour"] = lstm_nyc_predictions.index.hour
 
 # +
-sns.boxplot(nyc_predictions, x = "month", y = "Predicted_Load").set(title = "NYC Predicted Load by Month")
+sns.boxplot(lstm_nyc_predictions, x = "month", y = "Predicted_Load").set(title = "NYC LSTM Predicted Load by Month")
 plt.show()
 
-sns.boxplot(nyc_predictions, x = "month", y = "Actual_Load").set(title = "NYC Actual Load by Month")
-plt.show()
-
-# +
-sns.boxplot(nyc_predictions, x = "hour", y = "Predicted_Load").set(title = "NYC Predicted Load by Hour")
-plt.show()
-
-sns.boxplot(nyc_predictions, x = "hour", y = "Actual_Load").set(title = "NYC Actual Load by Hour")
+sns.boxplot(lstm_nyc_predictions, x = "month", y = "Actual_Load").set(title = "NYC LSTM Actual Load by Month")
 plt.show()
 
 # +
-avg_peak_month_load = nyc_predictions.query("month == 7")[["Predicted_Load", "Actual_Load"]].mean()
+sns.boxplot(lstm_nyc_predictions, x = "hour", y = "Predicted_Load").set(title = "NYC LSTM Predicted Load by Hour")
+plt.show()
+
+sns.boxplot(lstm_nyc_predictions, x = "hour", y = "Actual_Load").set(title = "NYC LSTM Actual Load by Hour")
+plt.show()
+
+# +
+avg_peak_month_load = lstm_nyc_predictions.query("month == 7")[["Predicted_Load", "Actual_Load"]].mean()
 print(avg_peak_month_load)
 
-avg_peak_hourly_load = nyc_predictions.query("hour == 22")[["Predicted_Load", "Actual_Load"]].mean()
+avg_peak_hourly_load = lstm_nyc_predictions.query("hour == 22")[["Predicted_Load", "Actual_Load"]].mean()
 print(avg_peak_hourly_load)
 # -
 
@@ -328,6 +328,8 @@ xgb_y_test = pd.DataFrame(normalizer_y.transform(xgb_y_test),
 xgb_model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators = 100)
 xgb_model.fit(xgb_X_train, xgb_y_train)
 
+# ### XGBoost Inference
+
 # +
 xgb_y_pred = xgb_model.predict(xgb_X_test)
 xgb_y_pred = xgb_y_pred.reshape(-1, 1)
@@ -346,6 +348,7 @@ xgb_y_viz_daily = xgb_y_viz.resample("D").sum()
 sns.lineplot(xgb_y_viz, x = xgb_y_viz.index, y = "Predicted_Load", label = "Predicted")
 sns.lineplot(xgb_y_viz, x = xgb_y_viz.index, y = "Actual_Load_MW", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
+plt.title("XGBoost Predicted vs Actual Demand")
 
 plt.savefig("../artifacts/xgb-predicted-actual-line.png")
 plt.show()
@@ -410,26 +413,26 @@ train_dataloader = DataLoader(train_elec_dataset, batch_size = batch_size, shuff
 
 gru = GRUModel(input_size, hidden_size, num_layers, dropout_probability)
 gru.apply(init_weights)
-criterion = nn.MSELoss()
-optimizer = optim.Adam(gru.parameters(), lr = 0.0001)
-losses = list()
+gru_criterion = nn.MSELoss()
+gru_optimizer = optim.Adam(gru.parameters(), lr = 0.0001)
+gru_losses = list()
 # -
 
 gru.train()
 for epoch in range(epochs):
     for x, y in train_dataloader:
         x = x.view(x.size(0), sequence_length, input_size)
-        optimizer.zero_grad()
+        gru_optimizer.zero_grad()
         output = gru(x)
-        loss = criterion(output, y.view(-1, 1))
+        loss = gru_criterion(output, y.view(-1, 1))
         loss.backward()
         nn.utils.clip_grad_norm_(gru.parameters(), max_norm = 1.0)
-        optimizer.step()
+        gru_optimizer.step()
 
     print(f"Epoch {epoch + 1} with loss: {loss.item()}")
-    losses.append(loss.item())
+    gru_losses.append(loss.item())
 
-gru_loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": losses})
+gru_loss_df = pd.DataFrame({"epoch": list(range(epochs)), "loss": gru_losses})
 sns.lineplot(gru_loss_df, x = "epoch", y = "loss")
 plt.xlabel("Epochs")
 plt.ylabel("MSE Loss")
@@ -449,10 +452,10 @@ nyc_test_normalized = pd.DataFrame(normalizer.transform(nyc_test_normalized),
 
 test_elec_dataset = ElectricLoadDataset(nyc_test_normalized, sequence_length)
 test_dataloader = DataLoader(test_elec_dataset, batch_size = batch_size, shuffle  = False)
-predictions, actuals = list(), list()
-mse = nn.MSELoss()
-total_mse = 0
-n_samples = 0
+gru_predictions, gru_actuals = list(), list()
+gru_mse = nn.MSELoss()
+gru_total_mse = 0
+gru_n_samples = 0
 
 gru.eval()
 with torch.no_grad():
@@ -460,34 +463,34 @@ with torch.no_grad():
         seq = seq.view(seq.size(0), sequence_length, input_size)
         output = gru(seq)
 
-        predictions.append(output.numpy())
-        actuals.append(label.numpy())
+        gru_predictions.append(output.numpy())
+        gru_actuals.append(label.numpy())
         
-        loss = mse(output, label.view(-1, 1))
-        total_mse += loss.item() * seq.size(0)
-        n_samples += seq.size(0)
+        loss = gru_mse(output, label.view(-1, 1))
+        gru_total_mse += loss.item() * seq.size(0)
+        gru_n_samples += seq.size(0)
 
-avg_mse = total_mse / n_samples
-print("Average GRU Test MSE: ", avg_mse)
+gru_avg_mse = gru_total_mse / gru_n_samples
+print("Average GRU Test MSE: ", gru_avg_mse)
 
-predictions = np.concatenate(predictions, axis = 0)
-actuals = np.concatenate(actuals, axis = 0)
-
-# +
-data_predictions = {"predictions": pd.Series(predictions.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
-data_predictions = pd.DataFrame(data_predictions)
-
-data_actuals = {"actuals": pd.Series(actuals.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
-data_actuals = pd.DataFrame(data_actuals)
-
-data_predictions = normalizer.inverse_transform(data_predictions)
-data_actuals = normalizer.inverse_transform(data_actuals)
+gru_predictions = np.concatenate(gru_predictions, axis = 0)
+gru_actuals = np.concatenate(gru_actuals, axis = 0)
 
 # +
-gru_data = {"Predicted_Load": data_predictions[:, 0],
-        "Actual_Load": data_actuals[:, 0]}
+gru_data_predictions = {"predictions": pd.Series(gru_predictions.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+gru_data_predictions = pd.DataFrame(gru_data_predictions)
+
+gru_data_actuals = {"actuals": pd.Series(gru_actuals.squeeze()),
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+gru_data_actuals = pd.DataFrame(gru_data_actuals)
+
+gru_data_predictions = normalizer.inverse_transform(gru_data_predictions)
+gru_data_actuals = normalizer.inverse_transform(gru_data_actuals)
+
+# +
+gru_data = {"Predicted_Load": gru_data_predictions[:, 0],
+        "Actual_Load": gru_data_actuals[:, 0]}
 
 gru_model_predictions = pd.DataFrame(gru_data)
 gru_model_predictions.index = nyc_test[24:].index
@@ -499,15 +502,15 @@ gru_model_predictions.isna().sum()
 gru_model_rmse = root_mean_squared_error(gru_model_predictions["Actual_Load"], gru_model_predictions["Predicted_Load"])
 print(gru_model_rmse)
 
-nyc_predictions = pd.merge(nyc_test[24:], gru_model_predictions, on = "UTC_Timestamp")
-nyc_predictions
+gru_nyc_predictions = pd.merge(nyc_test[24:], gru_model_predictions, on = "UTC_Timestamp")
+gru_nyc_predictions
 
 # +
-nyc_predictions.index = pd.to_datetime(nyc_predictions.index)
-nyc_predictions_daily = nyc_predictions.resample("D").sum()
+gru_nyc_predictions.index = pd.to_datetime(gru_nyc_predictions.index)
+gru_nyc_predictions_daily = gru_nyc_predictions.resample("D").sum()
 
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
-sns.lineplot(nyc_predictions, x = nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.7)
+sns.lineplot(gru_nyc_predictions, x = gru_nyc_predictions.index, y = "Predicted_Load", label = "Predicted")
+sns.lineplot(gru_nyc_predictions, x = gru_nyc_predictions.index, y = "Actual_Load", label = "Actual", alpha = 0.7)
 plt.xticks(rotation = 45)
 plt.title("GRU Load Demand Predictions vs Actuals")
 
