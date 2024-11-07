@@ -1,4 +1,6 @@
-# Forecasting NYC Electricity Load using Deep Learning
+# NYC Electricity Load Forecasting using Deep Learning
+
+![Electricity](artifacts/electricity.png)
 
 ## Instructions
 
