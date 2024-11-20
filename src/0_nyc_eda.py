@@ -183,7 +183,10 @@ temp_interpolate.head()
 
 # +
 nyc_ny_train = temp_interpolate
-nyc_ny_train_daily = nyc_ny_train.resample("D").sum()
+nyc_ny_train_daily = nyc_ny_train.resample("D").agg({
+    "New_York_City_Actual_Load__MW_": "sum",
+    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean"
+})
 
 nyc_ny_train.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
 # -
@@ -193,7 +196,10 @@ nyc_ny_train_daily.head()
 
 nyc_ny_test.index = nyc_ny_test["UTC_Timestamp"]
 nyc_ny_test = nyc_ny_test.drop(["UTC_Timestamp"], axis = 1)
-nyc_ny_test_daily = nyc_ny_test.resample("D").sum()
+nyc_ny_test_daily = nyc_ny_test.resample("D").agg({
+    "New_York_City_Actual_Load__MW_": "sum",
+    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean"
+})
 nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
 print(nyc_ny_test_daily.shape)
