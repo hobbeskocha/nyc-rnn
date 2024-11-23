@@ -27,9 +27,13 @@ import xgboost as xgb
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import root_mean_squared_error
+
+from classes.electric_load_dataset import ElectricLoadDataset
+from classes.model_lstm import LSTMModel
+from classes.model_gru import GRUModel
 # -
 
 torch.manual_seed(13)
@@ -54,49 +58,6 @@ nyc_test.head()
 
 
 # ## LSTM Modeling
-
-# ### Class Definitions
-
-# +
-class ElectricLoadDataset(Dataset):
-    def __init__(self, df, seq_len = 24):
-        self.seq_len = seq_len
-        self.data = df.values
-
-    def __len__(self):
-        return len(self.data) - self.seq_len
-    
-    def __getitem__(self, idx):
-        x = self.data[idx:idx + self.seq_len]
-        y = self.data[idx + self.seq_len, 0]
-        return torch.tensor(x, dtype = torch.float32), torch.tensor(y, dtype = torch.float32)
-    
-class LSTMModel(nn.Module):
-    def __init__(self, input, hidden, n_layers, dropout_prob = 0.1):
-        super(LSTMModel, self).__init__()
-        self.hidden_size = hidden
-        self.num_layers = n_layers
-        self.lstm = nn.LSTM(
-            input_size = input,
-            hidden_size = hidden,
-            num_layers = n_layers,
-            batch_first = True,
-            dropout = dropout_prob
-        )
-        self.dropout = nn.Dropout(dropout_prob)
-        self.fc = nn.Linear(hidden, 1)
-
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-
-        out, _ = self.lstm(x, (h0, c0))
-        out = self.dropout(out[:, -1, :])
-        out = self.fc(out)
-        return out
-
-
-# -
 
 # ### Model Training
 
@@ -362,34 +323,7 @@ nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timesta
 
 nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
-
-
 # -
-
-# ### Class Definitions
-
-class GRUModel(nn.Module):
-    def __init__(self, input, hidden, n_layers, dropout_prob = 0.1):
-        super(GRUModel, self).__init__()
-        self.hidden_size = hidden
-        self.num_layers = n_layers
-        self.gru = nn.GRU(
-            input_size = input,
-            hidden_size = hidden,
-            num_layers = n_layers,
-            batch_first = True,
-            dropout = dropout_prob
-        )
-        self.dropout = nn.Dropout(dropout_prob)
-        self.fc = nn.Linear(hidden, 1)
-
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        out, _ = self.gru(x, h0)
-        out = self.dropout(out[:, -1, :])
-        out = self.fc(out)
-        return out
-
 
 # ### Model Training
 
