@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 import xgboost as xgb
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 import torch
 import torch.nn as nn
@@ -34,6 +36,7 @@ from sklearn.metrics import root_mean_squared_error
 from classes.electric_load_dataset import ElectricLoadDataset
 from classes.model_lstm import LSTMModel
 from classes.model_gru import GRUModel
+from classes.helper_functions import is_stationary, init_weights
 # -
 
 torch.manual_seed(13)
@@ -56,25 +59,39 @@ nyc_train.head()
 nyc_test.info()
 nyc_test.head()
 
+# ## SARIMA Modeling
+
+# +
+nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
+nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
+
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+# -
+
+# ### Check Stationarity and plot ACF/PACF
+
+print(is_stationary(nyc_train["Actual_Load_MW"], significance=0.05))
+print("\n")
+print(is_stationary(nyc_train["Temperature_Fahrenheit"], significance=0.05))
+
+plot_acf(nyc_train["Actual_Load_MW"]).show()
+plot_pacf(nyc_train["Actual_Load_MW"]).show()
+
+plot_acf(nyc_train["Temperature_Fahrenheit"]).show()
+plot_pacf(nyc_train["Temperature_Fahrenheit"]).show()
 
 # ## LSTM Modeling
 
+# +
+nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
+nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
+
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+# -
+
 # ### Model Training
-
-def init_weights(m):
-    if isinstance(m, nn.Linear):
-        # Apply Xavier initialization to Linear layers
-        nn.init.xavier_uniform_(m.weight)
-    elif isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
-        # Apply Xavier initialization to LSTM or GRU weights
-        for name, param in m.named_parameters():
-            if 'weight_ih' in name:
-                nn.init.xavier_uniform_(param.data)
-            elif 'weight_hh' in name:
-                nn.init.orthogonal_(param.data)
-            elif 'bias' in name:
-                param.data.fill_(0)
-
 
 # +
 sequence_length = 24
