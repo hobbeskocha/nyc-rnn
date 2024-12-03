@@ -23,8 +23,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 import xgboost as xgb
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+import itertools
 
 import torch
 import torch.nn as nn
@@ -32,6 +31,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import root_mean_squared_error
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, RandomizedSearchCV
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from classes.sarimax_forecaster import SarimaxForecaster
 
 from classes.electric_load_dataset import ElectricLoadDataset
 from classes.model_lstm import LSTMModel
@@ -80,6 +83,33 @@ plot_pacf(nyc_train["Actual_Load_MW"]).show()
 
 plot_acf(nyc_train["Temperature_Fahrenheit"]).show()
 plot_pacf(nyc_train["Temperature_Fahrenheit"]).show()
+
+# ### Hyperparameter Tuning
+
+# +
+p_values = range(1, 2)
+d_values = [0]
+q_values = range(1, 2)
+P_values = range(1, 2)
+D_values = [0]
+Q_values = range(1, 2)
+P_values = range(1, 2)
+s_values = [24]
+
+param_grid = list(itertools.product(p_values, d_values, q_values, P_values, D_values, Q_values, s_values))
+param_dict = {
+    "order": [(params[0], params[1], params[2]) for params in param_grid],
+    "seasonal_order": [(params[3], params[4], params[5], params[6]) for params in param_grid]
+}
+tscv = TimeSeriesSplit(3)
+
+# +
+sgscv = RandomizedSearchCV(SarimaxForecaster(), param_distributions=param_dict,
+                      cv=tscv, scoring='neg_mean_squared_error')
+sgscv.fit(nyc_train[["Temperature_Fahrenheit"]], nyc_train["Actual_Load_MW"])
+
+print(sgscv.best_params_)
+# -
 
 # ## LSTM Modeling
 
