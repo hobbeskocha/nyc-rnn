@@ -24,6 +24,7 @@ import seaborn as sns
 import random
 import xgboost as xgb
 import itertools
+import pmdarima as pm
 
 import torch
 import torch.nn as nn
@@ -70,6 +71,9 @@ nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timesta
 
 nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+
+nyc_train.index = pd.to_datetime(nyc_train.index)
+nyc_test.index = pd.to_datetime(nyc_test.index)
 # -
 
 # ### Check Stationarity and plot ACF/PACF
@@ -78,38 +82,55 @@ print(is_stationary(nyc_train["Actual_Load_MW"], significance=0.05))
 print("\n")
 print(is_stationary(nyc_train["Temperature_Fahrenheit"], significance=0.05))
 
-plot_acf(nyc_train["Actual_Load_MW"]).show()
-plot_pacf(nyc_train["Actual_Load_MW"]).show()
+plot_acf(nyc_train["Actual_Load_MW"], alpha=0.05).show()
+plot_pacf(nyc_train["Actual_Load_MW"], alpha=0.05).show()
 
-plot_acf(nyc_train["Temperature_Fahrenheit"]).show()
-plot_pacf(nyc_train["Temperature_Fahrenheit"]).show()
+plot_acf(nyc_train["Temperature_Fahrenheit"], alpha=0.05).show()
+plot_pacf(nyc_train["Temperature_Fahrenheit"], alpha=0.05).show()
 
 # ### Hyperparameter Tuning
 
 # +
-p_values = range(1, 2)
-d_values = [0]
-q_values = range(1, 2)
-P_values = range(1, 2)
-D_values = [0]
-Q_values = range(1, 2)
-P_values = range(1, 2)
-s_values = [24]
+"""
+Auto ARIMA requires prohibitive amount of time and resources for hourly dataset of this size.
+Using a daily aggregation instead.
+"""
 
-param_grid = list(itertools.product(p_values, d_values, q_values, P_values, D_values, Q_values, s_values))
-param_dict = {
-    "order": [(params[0], params[1], params[2]) for params in param_grid],
-    "seasonal_order": [(params[3], params[4], params[5], params[6]) for params in param_grid]
-}
-tscv = TimeSeriesSplit(3)
+nyc_train_daily = nyc_train.resample("D").agg({
+    "Actual_Load_MW": "sum",
+    "Temperature_Fahrenheit": "mean"
+})
+nyc_test_daily = nyc_test.resample("D").agg({
+    "Actual_Load_MW": "sum",
+    "Temperature_Fahrenheit": "mean"
+})
 
-# +
-sgscv = RandomizedSearchCV(SarimaxForecaster(), param_distributions=param_dict,
-                      cv=tscv, scoring='neg_mean_squared_error')
-sgscv.fit(nyc_train[["Temperature_Fahrenheit"]], nyc_train["Actual_Load_MW"])
-
-print(sgscv.best_params_)
+nyc_train_daily.head()
 # -
+
+sarima_fit = pm.auto_arima(y=nyc_train_daily["Actual_Load_MW"],
+                           X=nyc_train_daily[["Temperature_Fahrenheit"]],
+                           stationary=True,
+                           start_p=1, start_q=1, 
+                           max_p=24, max_q=24,
+                           start_P=1, start_Q=1,
+                           max_P=24, max_Q=24,
+                           m = 24,
+                           seasonal=True,
+                           suppress_warnings=True,
+                           trace=True,
+                           stepwise=True)
+print(sarima_fit.summary())
+
+# ### SARIMA Inference
+
+sarima_pred = sarima_fit.predict(n_periods=len(nyc_test_daily),
+                                  X=nyc_test_daily[["Temperature_Fahrenheit"]])
+sarima_pred.head()
+
+sarima_rmse = root_mean_squared_error(y_true=nyc_test_daily["Actual_Load_MW"],
+                                       y_pred=sarima_pred)
+print(sarima_rmse)
 
 # ## LSTM Modeling
 
