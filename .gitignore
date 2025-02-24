@@ -1,5 +1,2 @@
-src/0_nyc_eda.ipynb
-src/1_nyc_analysis.ipynb
-src/1_nyc_analysis-copy.ipynb
-
+src/*.ipynb
 src/classes/__pycache__/
