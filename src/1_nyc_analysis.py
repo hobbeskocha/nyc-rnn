@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 import xgboost as xgb
-import itertools
 import pmdarima as pm
 
 import torch
@@ -32,10 +31,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import root_mean_squared_error
-from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, RandomizedSearchCV
-from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.model_selection import RandomizedSearchCV
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from classes.sarimax_forecaster import SarimaxForecaster
 
 from classes.electric_load_dataset import ElectricLoadDataset
 from classes.model_lstm import LSTMModel
@@ -93,7 +90,7 @@ plot_pacf(nyc_train["Temperature_Fahrenheit"], alpha=0.05).show()
 # +
 """
 Auto ARIMA requires prohibitive amount of time and resources for hourly dataset of this size.
-Using a daily aggregation instead.
+Attempting a daily aggregation instead.
 """
 
 nyc_train_daily = nyc_train.resample("D").agg({
@@ -112,10 +109,10 @@ sarima_fit = pm.auto_arima(y=nyc_train_daily["Actual_Load_MW"],
                            X=nyc_train_daily[["Temperature_Fahrenheit"]],
                            stationary=True,
                            start_p=1, start_q=1, 
-                           max_p=24, max_q=24,
+                           max_p=15, max_q=15,
                            start_P=1, start_Q=1,
-                           max_P=24, max_Q=24,
-                           m = 24,
+                           max_P=15, max_Q=15,
+                           m = 12,
                            seasonal=True,
                            suppress_warnings=True,
                            trace=True,
