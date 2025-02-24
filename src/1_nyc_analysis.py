@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 import xgboost as xgb
+import pmdarima as pm
 
 import torch
 import torch.nn as nn
@@ -30,10 +31,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import root_mean_squared_error
+from sklearn.model_selection import RandomizedSearchCV
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 from classes.electric_load_dataset import ElectricLoadDataset
 from classes.model_lstm import LSTMModel
 from classes.model_gru import GRUModel
+from classes.helper_functions import is_stationary, init_weights
 # -
 
 torch.manual_seed(13)
@@ -56,25 +60,86 @@ nyc_train.head()
 nyc_test.info()
 nyc_test.head()
 
+# ## SARIMA Modeling
+
+# +
+nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
+nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
+
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+
+nyc_train.index = pd.to_datetime(nyc_train.index)
+nyc_test.index = pd.to_datetime(nyc_test.index)
+# -
+
+# ### Check Stationarity and plot ACF/PACF
+
+print(is_stationary(nyc_train["Actual_Load_MW"], significance=0.05))
+print("\n")
+print(is_stationary(nyc_train["Temperature_Fahrenheit"], significance=0.05))
+
+plot_acf(nyc_train["Actual_Load_MW"], alpha=0.05).show()
+plot_pacf(nyc_train["Actual_Load_MW"], alpha=0.05).show()
+
+plot_acf(nyc_train["Temperature_Fahrenheit"], alpha=0.05).show()
+plot_pacf(nyc_train["Temperature_Fahrenheit"], alpha=0.05).show()
+
+# ### Hyperparameter Tuning
+
+# +
+"""
+Auto ARIMA requires prohibitive amount of time and resources for hourly dataset of this size.
+Attempting a daily aggregation instead.
+"""
+
+nyc_train_daily = nyc_train.resample("D").agg({
+    "Actual_Load_MW": "sum",
+    "Temperature_Fahrenheit": "mean"
+})
+nyc_test_daily = nyc_test.resample("D").agg({
+    "Actual_Load_MW": "sum",
+    "Temperature_Fahrenheit": "mean"
+})
+
+nyc_train_daily.head()
+# -
+
+sarima_fit = pm.auto_arima(y=nyc_train_daily["Actual_Load_MW"],
+                           X=nyc_train_daily[["Temperature_Fahrenheit"]],
+                           stationary=True,
+                           start_p=1, start_q=1, 
+                           max_p=15, max_q=15,
+                           start_P=1, start_Q=1,
+                           max_P=15, max_Q=15,
+                           m = 12,
+                           seasonal=True,
+                           suppress_warnings=True,
+                           trace=True,
+                           stepwise=True)
+print(sarima_fit.summary())
+
+# ### SARIMA Inference
+
+sarima_pred = sarima_fit.predict(n_periods=len(nyc_test_daily),
+                                  X=nyc_test_daily[["Temperature_Fahrenheit"]])
+sarima_pred.head()
+
+sarima_rmse = root_mean_squared_error(y_true=nyc_test_daily["Actual_Load_MW"],
+                                       y_pred=sarima_pred)
+print(sarima_rmse)
 
 # ## LSTM Modeling
 
+# +
+nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
+nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
+
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+# -
+
 # ### Model Training
-
-def init_weights(m):
-    if isinstance(m, nn.Linear):
-        # Apply Xavier initialization to Linear layers
-        nn.init.xavier_uniform_(m.weight)
-    elif isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
-        # Apply Xavier initialization to LSTM or GRU weights
-        for name, param in m.named_parameters():
-            if 'weight_ih' in name:
-                nn.init.xavier_uniform_(param.data)
-            elif 'weight_hh' in name:
-                nn.init.orthogonal_(param.data)
-            elif 'bias' in name:
-                param.data.fill_(0)
-
 
 # +
 sequence_length = 24
