@@ -60,7 +60,7 @@ Following object-oriented design principles, I defined classes to manage both th
 - Dropout layers, with a 20% probability, after each LSTM/GRU layer to prevent overfitting. While additional layers and neurons can capture more complex relationships, they also increase the risk of overfitting, which the dropout layers mitigate by performing regularization.
 - A Linear layer that condenses the output from the LSTM/GRU layers down to a single value, enabling the model to produce a continuous regression output for electricity demand predictions.
 
-To provide a performance benchmark against the deep learning models, an XGBoost model was implemented as a robust, yet traditional, alternative. The model was configured with:
+To provide a performance benchmark against the deep learning models, an XGBoost model was implemented as a robust, yet traditional, alternative. SARIMA was initially investigated; after creating the ACF and PACF plots and attempting to use pmdarima to find a suitable parameter configuration, it became evident that SARIAM was not capable of handling the long-range dependencies in this dataset. Thus, the chosen XGBoost model was configured with:
 
 - 100 weak learners, allowing it to incrementally build decision trees for enhanced predictive power.
 - Squared error as the objective function, allowing each weak learner to minimize prediction error with each iteration.
