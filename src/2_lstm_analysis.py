@@ -47,7 +47,7 @@ nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 # -
 
-# ### Model Training
+# ## Model Training
 
 # +
 sequence_length = 24
@@ -97,7 +97,7 @@ plt.show()
 
 print("Average LSTM Train Loss", lstm_loss_df["loss"].mean())
 
-# ### Model Inference
+# ## Model Inference
 
 # +
 nyc_test_normalized = nyc_test.copy()

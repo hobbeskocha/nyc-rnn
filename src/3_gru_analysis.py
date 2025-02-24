@@ -30,6 +30,7 @@ from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import root_mean_squared_error
 
+from classes.model_gru import GRUModel
 from classes.electric_load_dataset import ElectricLoadDataset
 from classes.helper_functions import init_weights
 # -
@@ -46,7 +47,7 @@ nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 # -
 
-# ### Model Training
+# ## Model Training
 
 # +
 sequence_length = 24
@@ -96,7 +97,7 @@ plt.show()
 
 print("Average GRU Train Loss", gru_loss_df["loss"].mean())
 
-# ### Model Inference
+# ## Model Inference
 
 # +
 nyc_test_normalized = nyc_test.copy()
