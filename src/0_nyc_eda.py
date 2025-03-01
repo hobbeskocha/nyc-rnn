@@ -253,7 +253,9 @@ temp_interpolate.head()
 nyc_ny_train = temp_interpolate
 nyc_ny_train_daily = nyc_ny_train.resample("D").agg({
     "New_York_City_Actual_Load__MW_": "sum",
-    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean"
+    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean",
+    "New_York_City_LMP": "mean",
+    "New_York_City__Congestion_": "mean"
 })
 
 nyc_ny_train.to_csv("../data/nyc_ny_train_hourly_interpolated.csv")
@@ -266,7 +268,9 @@ nyc_ny_test.index = nyc_ny_test["UTC_Timestamp"]
 nyc_ny_test = nyc_ny_test.drop(["UTC_Timestamp"], axis = 1)
 nyc_ny_test_daily = nyc_ny_test.resample("D").agg({
     "New_York_City_Actual_Load__MW_": "sum",
-    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean"
+    "New_York_City___JFK_Airport_Temperature__Fahrenheit_": "mean",
+    "New_York_City_LMP": "mean",
+    "New_York_City__Congestion_": "mean"
 })
 nyc_ny_test.to_csv("../data/nyc_ny_test_hourly.csv")
 
@@ -312,6 +316,32 @@ sns.boxplot(nyc_viz, x = "year", y = "New_York_City___JFK_Airport_Temperature__F
 plt.show()
 
 # +
+sns.boxplot(nyc_viz, x = "hour", y = "New_York_City_LMP").set(title = "NYC LMP by Hour")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "month", y = "New_York_City_LMP").set(title = "NYC LMP by Month")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City_LMP").set(title = "NYC LMP by Quarter")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "year", y = "New_York_City_LMP").set(title = "NYC LMP by Year")
+plt.show()
+
+# +
+sns.boxplot(nyc_viz, x = "hour", y = "New_York_City__Congestion_").set(title = "NYC Congestion by Hour")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "month", y = "New_York_City__Congestion_").set(title = "NYC Congestion by Month")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "quarter", y = "New_York_City__Congestion_").set(title = "NYC Congestion by Quarter")
+plt.show()
+
+sns.boxplot(nyc_viz, x = "year", y = "New_York_City__Congestion_").set(title = "NYC Congestion by Year")
+plt.show()
+
+# +
 sns.histplot(nyc_ny_train_daily["New_York_City_Actual_Load__MW_"]).set(title = "NYC Load Daily")
 plt.savefig("../artifacts/nyc-hist-load-daily.png")
 plt.show()
@@ -328,15 +358,61 @@ sns.histplot(nyc_ny_train["New_York_City___JFK_Airport_Temperature__Fahrenheit_"
 plt.show()
 
 # +
-plt.figure(figsize = (20, 10))
+sns.histplot(nyc_ny_train_daily["New_York_City_LMP"]).set(title = "NYC LMP Daily")
+plt.show()
+
+sns.histplot(nyc_ny_train["New_York_City_LMP"]).set(title = "NYC LMP Hourly")
+plt.show()
+
+# +
+sns.histplot(nyc_ny_train_daily["New_York_City__Congestion_"]).set(title = "NYC Congestion Daily")
+plt.show()
+
+sns.histplot(nyc_ny_train["New_York_City__Congestion_"]).set(title = "NYC Congestion Hourly")
+plt.show()
+
+# +
+plt.figure(figsize = (18, 8))
 sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Training Set")
 plt.xticks(rotation = 45)
-
 plt.savefig("../artifacts/nyc-training-load.png")
 plt.show()
-# -
 
-plt.figure(figsize = (20, 10))
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Daily Temperature for Training Set")
+plt.xticks(rotation = 45)
+plt.savefig("../artifacts/nyc-training-temperature.png")
+plt.show()
+
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City_LMP").set(title = "NYC Daily LMP for Training Set")
+plt.xticks(rotation = 45)
+plt.savefig("../artifacts/nyc-training-lmp.png")
+plt.show()
+
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_train_daily, x = nyc_ny_train_daily.index, y = "New_York_City__Congestion_").set(title = "NYC Daily Congestion for Training Set")
+plt.xticks(rotation = 45)
+plt.savefig("../artifacts/nyc-training-congestion.png")
+plt.show()
+
+# +
+plt.figure(figsize = (18, 8))
 sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City_Actual_Load__MW_").set(title = "NYC Daily Load for Test Set")
+plt.xticks(rotation = 45)
+plt.show()
+
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City___JFK_Airport_Temperature__Fahrenheit_").set(title = "NYC Daily Temperature for Test Set")
+plt.xticks(rotation = 45)
+plt.show()
+
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City_LMP").set(title = "NYC Daily LMP for Test Set")
+plt.xticks(rotation = 45)
+plt.show()
+
+plt.figure(figsize = (18, 8))
+sns.lineplot(data = nyc_ny_test_daily, x = nyc_ny_test_daily.index, y = "New_York_City__Congestion_").set(title = "NYC Daily Congestion for Test Set")
 plt.xticks(rotation = 45)
 plt.show()
