@@ -43,8 +43,8 @@ np.random.seed(13)
 nyc_train = pd.read_csv("../data/nyc_ny_train_hourly_interpolated.csv", index_col= "UTC_Timestamp")
 nyc_test = pd.read_csv("../data/nyc_ny_test_hourly.csv", index_col= "UTC_Timestamp")
 
-nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
-nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
+nyc_train.columns = ["Actual_Load_MW", "Temperature_Fahrenheit", "LMP", "Congestion"]
+nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit", "LMP", "Congestion"]
 # -
 
 # ## Model Training
@@ -52,7 +52,7 @@ nyc_test.columns = ["Actual_Load_MW", "Temperature_Fahrenheit"]
 # +
 sequence_length = 24
 batch_size = 32
-input_size = 2
+input_size = 4
 hidden_size = 50
 num_layers = 2
 dropout_probability = 0.2
@@ -134,13 +134,18 @@ gru_actuals = np.concatenate(gru_actuals, axis = 0)
 
 # +
 gru_data_predictions = {"predictions": pd.Series(gru_predictions.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:]),
+                    "lmp": pd.Series(nyc_test_normalized["LMP"].values[24:]),
+                    "congestion": pd.Series(nyc_test_normalized["Congestion"].values[24:])}
 gru_data_predictions = pd.DataFrame(gru_data_predictions)
 
 gru_data_actuals = {"actuals": pd.Series(gru_actuals.squeeze()),
-                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:])}
+                    "temperature": pd.Series(nyc_test_normalized["Temperature_Fahrenheit"].values[24:]),
+                    "lmp": pd.Series(nyc_test_normalized["LMP"].values[24:]),
+                    "congestion": pd.Series(nyc_test_normalized["Congestion"].values[24:])}
 gru_data_actuals = pd.DataFrame(gru_data_actuals)
 
+# to inverse transform, all columns from initial transformation are needed
 gru_data_predictions = normalizer.inverse_transform(gru_data_predictions)
 gru_data_actuals = normalizer.inverse_transform(gru_data_actuals)
 
