@@ -138,7 +138,7 @@ encoder_lstm_1 = LSTM(64, return_sequences=True, name="encoder_lstm_1")(input_la
 encoder_lstm_2 = LSTM(32, return_sequences=True, name="encoder_lstm_2")(encoder_lstm_1)
 
 # Attention mechanism
-attention_layer = Attention(use_scale =True, name="attention_layer")([encoder_lstm_2, encoder_lstm_2]) # TODO: review
+attention_layer = Attention(use_scale =True, name="attention_layer")([encoder_lstm_2, encoder_lstm_2])
 
 # Decoder
 decoder_lstm_1 = LSTM(32, return_sequences=True, name="decoder_lstm_1")(attention_layer)
@@ -329,6 +329,3 @@ shap.plots.scatter(shap_values[:, 2], color=shap_values[:, 3])
 
 shap.plots.bar(shap_values)
 
-
-# +
-# shap.plots.heatmap(shap_values) # TODO: running for 1+ hr but did not finish
